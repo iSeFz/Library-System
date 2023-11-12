@@ -51,6 +51,39 @@ public:
         authors.close();
     }
 
+    // Add a new book
+    void addBook() {
+        Book newBook;
+        // Open the books data file to add a new book
+        fstream books("books.txt", ios::app | ios::binary);
+        // Check if the file has successfully opened without errors
+        if(books.fail()) {
+            cerr << "\tError opening the file!\n";
+            return;
+        }
+        string record;     // Store the record data to write
+        int recordLen = 0; // Track the length of the record
+        // Get the actual book data from the user
+        cout << "Enter book ISBN: ";
+        cin.getline(newBook.ISBN, 15);
+        record += newBook.ISBN;
+        record += "|";
+        cout << "Enter book title: ";
+        cin.getline(newBook.bookTitle, 30);
+        record += newBook.bookTitle;
+        record += "|";
+        cout << "Enter author ID: ";
+        cin.getline(newBook.authorID, 15);
+        record += newBook.authorID;
+        record += "|";
+        // Get the record length to use as length indicator
+        recordLen = record.length();
+        // Write the record to the file
+        books << recordLen << record;
+        cout << "\tNew Book Added Successfully!\n";
+        books.close();
+    }
+
     // Main method to start the program
     void start() {
         cout << "\tWelcome to the Library Catalog System!\n";
@@ -74,7 +107,7 @@ public:
                 addAuthor();
             } else if (choice == "2") {
                 cout << "\tAdding New Book...\n";
-                // addBook();
+                addBook();
             } else if (choice == "10") {
                 cout << "\tThank you for using our Library System!\n";
                 break;
