@@ -216,7 +216,7 @@ public:
     void addAuthorToPrimaryIndexFile(char authorID[], short byteOffest)
     {
         int authID = 0;
-        // Convert the authorID into from character array into integer
+        // Convert the authorID from character array into integer
         for (int i = 0; authorID[i] != '\0'; i++)
         {
             authID *= 10;
@@ -238,6 +238,122 @@ public:
     void addAuthorToSecondaryIndexFile(Author author) {}
 
     void addAuthorToSecondaryIndexLinkedListFile(Author author) {}
+
+    // Create the book primary index file
+    void createBookPrimaryIndex()
+    {
+        // Open the data file in input mode
+        fstream books(booksFile, ios::in | ios::binary);
+
+        // Skip the header value
+        books.seekg(2, ios::beg);
+
+        // Create the index file
+        while (books)
+        { // Read the record size to be able to jump to the end of the record
+            short recordSize;
+            books.read((char *)&recordSize, sizeof(short));
+            // Store the byte offset of the current record
+            short tempOffset = books.tellg();
+            if (tempOffset == -1) // If the file has no records, just the header
+                break;
+            // Read the value of book isbn
+            int tempISBN = 0;
+            char ISBN[15];
+            books.read((char *)&ISBN, sizeof(ISBN));
+            // Convert the ISBN from character array into integer
+            for (int i = 0; ISBN[i] != '\0' and ISBN[i] != lengthDelimiter; i++)
+            {
+                tempISBN *= 10;
+                tempISBN += (ISBN[i] - '0');
+            }
+            // Jump to the next record, minus 17 to compensate the read of the record size itself (2 bytes)
+            // And the rest (15 bytes) to compensate the dummy read of ISBN character array
+            books.seekg(recordSize - 17, ios::cur);
+            // Insert the record into the map to be sorted in memory by the author id
+            booksPrimaryIndex.insert({tempISBN, tempOffset});
+        }
+        books.close();
+
+        // Open the file in output mode
+        fstream bookPrimIdx(booksPrimaryIndexFile, ios::out | ios::binary);
+
+        // Write the status flag at the beginning of the file
+        // Before appending any records in it
+        isBookPrimIdxUpToDate = 0;
+        bookPrimIdx.seekp(0, ios::beg);
+        bookPrimIdx.write((char *)&isBookPrimIdxUpToDate, sizeof(short));
+        bookPrimIdx.close();
+
+        // Save the index file to disk
+        saveBookPrimaryIndex();
+    }
+
+    // Retrieve data from the map & write it back to the physical file on disk
+    void saveBookPrimaryIndex()
+    {
+        // Open the file in multiple modes
+        fstream bookPrimIdx(booksPrimaryIndexFile, ios::in | ios::out | ios::binary);
+
+        // Read the status flag
+        bookPrimIdx.seekg(0, ios::beg);
+        bookPrimIdx.read((char *)&isBookPrimIdxUpToDate, sizeof(short));
+
+        // If the file is already up to date, do not write & exit
+        if (isBookPrimIdxUpToDate == 1)
+            return;
+
+        // Otherwise if the file is not up to date OR it is the first time to save it, write it to disk
+        // Update the index file by rewriting it back to disk after inserting into the map
+        for (auto record : booksPrimaryIndex)
+        {
+            bookPrimIdx.write((char *)&record.first, sizeof(int));    // Write the ISBN
+            bookPrimIdx.write((char *)&record.second, sizeof(short)); // Write the byte offset
+        }
+
+        // Update the file status to be up to date, by setting isBookPrimIdxUpToDate to 1
+        isBookPrimIdxUpToDate = 1;
+        bookPrimIdx.seekp(0, ios::beg);
+        bookPrimIdx.write((char *)&isBookPrimIdxUpToDate, sizeof(short));
+        bookPrimIdx.close();
+    }
+
+    // Load books primary index file into memory
+    void loadBookPrimaryIndex()
+    {
+        // Open the index file in input mode
+        fstream bookPrimIdx(booksPrimaryIndexFile, ios::in | ios::binary);
+
+        // Get the file size, store its offset in endOffset
+        bookPrimIdx.seekg(0, ios::end);
+        short endOffset = bookPrimIdx.tellg();
+
+        // Check the status field
+        bookPrimIdx.seekg(0, ios::beg);
+        bookPrimIdx.read((char *)&isBookPrimIdxUpToDate, sizeof(short));
+
+        // If the file is outdated, recreate it
+        if (isBookPrimIdxUpToDate != 1)
+        {
+            createBookPrimaryIndex();
+            return;
+        }
+
+        // Insert all records into the books primary index map
+        while (bookPrimIdx)
+        { // If reached the end of file, exit
+            if (bookPrimIdx.tellg() == endOffset)
+                break;
+            int tempISBN;
+            short tempOffset;
+            bookPrimIdx.read((char *)&tempISBN, sizeof(int));
+            bookPrimIdx.read((char *)&tempOffset, sizeof(short));
+            // Insert the record into the map to be sorted in memory by the book isbn
+            booksPrimaryIndex.insert({tempISBN, tempOffset});
+            cout << "Book ISBN ==> " << tempISBN << ", Offset ==> " << tempOffset << "\n";
+        }
+        bookPrimIdx.close();
+    }
 
     // Add a new book helper function
     void addBook()
@@ -299,7 +415,7 @@ public:
     void addBookToPrimaryIndexFile(char ISBN[], short byteOffest)
     {
         int bookISBN = 0;
-        // Convert the ISBN into from character array into integer
+        // Convert the ISBN from character array into integer
         for (int i = 0; ISBN[i] != '\0'; i++)
         {
             bookISBN *= 10;
@@ -371,6 +487,7 @@ public:
         cout << "\tWelcome to the Library Catalog System!\n";
         // Load index files into memory
         loadAuthorPrimaryIndex();
+        loadBookPrimaryIndex();
         // Loop until user exits
         while (true)
         {
@@ -414,6 +531,7 @@ public:
     {
         // Save the primary index files to the disk with the updated indices
         saveAuthorPrimaryIndex();
+        saveBookPrimaryIndex();
         cout << "\tThank you for using our Library System!\n";
     }
 };
