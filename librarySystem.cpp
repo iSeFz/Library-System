@@ -30,12 +30,14 @@ private:
     const string booksSecondaryIndexFile = "booksSecondaryIndex.txt";                     // Books secondary index file
     const string booksSecondaryIndexLinkedListFile = "booksSecondaryIndexLinkedList.txt"; // Books secondary index linked list file
 
-    const char lengthDelimiter = '|'; // Delimiter to separate length indicator from record data
+    const char lengthDelimiter = '|';  // Delimiter to separate length indicator from record data
+    short isAuthorPrimIdxUpToDate = 0; // Flag to track the status of the authors primary index file
+    short isBookPrimIdxUpToDate = 0;   // Flag to track the status of the books primary index file
 
-    map<char[15], int> authorsPrimaryIndex;   // (Author ID, byte offset) Authors primary index
+    map<int, short> authorsPrimaryIndex;      // (Author ID, byte offset) Authors primary index
     map<char[30], int> authorsSecondaryIndex; // (Author Name, First record in linked list) Authors secondary index
 
-    map<char[15], int> booksPrimaryIndex;   // (ISBN, byte offset) Books primary index
+    map<int, short> booksPrimaryIndex;      // (ISBN, byte offset) Books primary index
     map<char[15], int> booksSecondaryIndex; // (Author ID, First record in linked list) Books secondary index
 
 public:
@@ -55,13 +57,12 @@ public:
     }
 
     // Add the new author to the main authors data file
-    void addAuthorToDataFile(Author author)
+    void addAuthorToDataFile(Author &author)
     {
         short header, recordSize, idSize, nameSize, addSize;
-
         // Open the file in multiple modes
         fstream authors(authorsFile, ios::in | ios::out | ios::app | ios::binary);
-        
+
         // Read the header of the file
         authors.seekg(0);
         authors.read((char *)&header, sizeof(header));
@@ -90,13 +91,34 @@ public:
             authors.write(author.address, addSize);
             authors.write((char *)&lengthDelimiter, 1);
             // Add the new author to the primary index file
-            // addAuthorToPrimaryIndexFile(author, offset);
+            addAuthorToPrimaryIndexFile(author.authorID, offset);
             cout << "\tNew Author Added Successfully!\n";
-            authors.close(); // Close the authors data file
+            authors.close();
         }
     }
 
-    void addAuthorToPrimaryIndexFile(Author author, short byteOffest) {}
+    // Add the new author to the primary index file
+    void addAuthorToPrimaryIndexFile(char authorID[], short byteOffest)
+    {
+        int authID = 0;
+        // Convert the authorID into from character array into integer
+        for (int i = 0; authorID[i] != '\0'; i++)
+        {
+            authID *= 10;
+            authID += (authorID[i] - '0');
+        }
+
+        // Insert the new record into the map to be automatically sorted by authorID
+        authorsPrimaryIndex.insert({authID, byteOffest});
+
+        // Open the index file in output mode
+        fstream authorPrimIdx(authorsPrimaryIndexFile, ios::out | ios::binary);
+        // Update the status of the file to be NOT up to date, to save it to the disk afterward
+        isAuthorPrimIdxUpToDate = 0;
+        authorPrimIdx.seekp(0);
+        authorPrimIdx.write((char *)&isAuthorPrimIdxUpToDate, sizeof(short));
+        authorPrimIdx.close();
+    }
 
     void addAuthorToSecondaryIndexFile(Author author) {}
 
@@ -118,13 +140,12 @@ public:
     }
 
     // Add the new book to the main books data file
-    void addBookToDataFile(Book book)
+    void addBookToDataFile(Book &book)
     {
         short header, recordSize, isbnSize, titleSize, authIdSize;
-
         // Open the file in multiple modes
         fstream books(booksFile, ios::in | ios::out | ios::app | ios::binary);
-        
+
         // Read the header of the file
         books.seekg(0);
         books.read((char *)&header, sizeof(header));
@@ -153,13 +174,34 @@ public:
             books.write(book.authorID, authIdSize);
             books.write((char *)&lengthDelimiter, 1);
             // Add the new book to the primary index file
-            // addBookToPrimaryIndexFile(book, offset);
+            addBookToPrimaryIndexFile(book.ISBN, offset);
             cout << "\tNew Book Added Successfully!\n";
-            books.close(); // Close the books data file
+            books.close();
         }
     }
 
-    void addBookToPrimaryIndexFile(Book book, short byteOffest) {}
+    // Add the new book to the primary index file
+    void addBookToPrimaryIndexFile(char ISBN[], short byteOffest)
+    {
+        int bookISBN = 0;
+        // Convert the ISBN into from character array into integer
+        for (int i = 0; ISBN[i] != '\0'; i++)
+        {
+            bookISBN *= 10;
+            bookISBN += (ISBN[i] - '0');
+        }
+
+        // Insert the new record into the map to be automatically sorted by ISBN
+        booksPrimaryIndex.insert({bookISBN, byteOffest});
+
+        // Open the index file in output mode
+        fstream bookPrimIdx(booksPrimaryIndexFile, ios::out | ios::binary);
+        // Update the status of the file to be NOT up to date, to save it to the disk afterward
+        isBookPrimIdxUpToDate = 0;
+        bookPrimIdx.seekp(0);
+        bookPrimIdx.write((char *)&isBookPrimIdxUpToDate, sizeof(short));
+        bookPrimIdx.close();
+    }
 
     void addBookToSecondaryIndexFile(Book book) {}
 
