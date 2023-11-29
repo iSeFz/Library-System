@@ -327,7 +327,6 @@ public:
             bookPrimIdx.read((char *) &tempOffset, sizeof(short));
             // Insert the record into the map to be sorted in memory by the book isbn
             booksPrimaryIndex.insert({tempISBN, tempOffset});
-            cout << "Book ISBN ==> " << tempISBN << ", Offset ==> " << tempOffset << "\n";
         }
         bookPrimIdx.close();
     }
@@ -454,15 +453,16 @@ public:
             int offset = id->second;
             fstream authors(authorsFile, ios::in | ios::binary);
             authors.seekg(offset, ios::beg);
-            Author author{};
+            Author author;
             authors.getline(author.authorID, 15, '|');
             authors.getline(author.authorName, 30, '|');
             authors.getline(author.address, 30, '|');
-            cout << "Author ID: " << author.authorID << "\n";
+            cin.ignore();
+            cout << "\tAuthor #" << author.authorID << " Data\n";
             cout << "Author Name: " << author.authorName << "\n";
             cout << "Author Address: " << author.address << "\n";
         }
-        else cout << "Author does not exist\n";
+        else cout << "\tAuthor does not exist\n";
     }
 
     // Print book using ISBN
@@ -470,20 +470,21 @@ public:
         int ISBN;
         cout << "Enter Book ISBN: ";
         cin >> ISBN;
-        auto id = booksPrimaryIndex.lower_bound(ISBN);
-        if (id != booksPrimaryIndex.end() && id->first == ISBN) {
-            int offset = id->second;
+        auto isbn = booksPrimaryIndex.lower_bound(ISBN);
+        if (isbn != booksPrimaryIndex.end() && isbn->first == ISBN) {
+            int offset = isbn->second;
             fstream books(booksFile, ios::in | ios::binary);
-            books.seekg(offset + 1, ios::beg);
-            Book book{};
+            books.seekg(offset, ios::beg);
+            Book book;
             books.getline(book.ISBN, 15, '|');
             books.getline(book.bookTitle, 30, '|');
             books.getline(book.authorID, 15, '|');
-            cout << "Book ISBN: " << book.ISBN << "\n";
+            cin.ignore();
+            cout << "\tBook with ISBN #" << book.ISBN << " Data\n";
             cout << "Book Title: " << book.bookTitle << "\n";
             cout << "Author ID: " << book.authorID << "\n";
         }
-        else cout << "Book does not exist\n";
+        else cout << "\tBook does not exist\n";
     }
 
     // Handle the select query
@@ -517,16 +518,21 @@ public:
             string choice;
             getline(cin, choice);
             if (choice == "1") {
-                cout << "\tAdding New Author...\n";
+                cout << "\tAdding New Author\n";
                 addAuthor();
             } else if (choice == "2") {
-                cout << "\tAdding New Book...\n";
+                cout << "\tAdding New Book\n";
                 addBook();
             }
-            else if (choice == "7")printAuthor();
-            else if (choice == "8")printBook();
-            else if (choice == "9")writeQuery();
-            else if (choice == "10") {
+            else if (choice == "7"){
+                cout << "\tPrinting Author Using ID\n";
+                printAuthor();
+            } else if (choice == "8"){
+                cout << "\tPrinting Book Using ISBN\n";
+                printBook();
+            } else if (choice == "9"){
+                writeQuery();
+            } else if (choice == "10") {
                 terminate();
                 break;
             } else {
