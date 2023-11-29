@@ -457,12 +457,12 @@ public:
             authors.getline(author.authorID, 15, '|');
             authors.getline(author.authorName, 30, '|');
             authors.getline(author.address, 30, '|');
-            cin.ignore();
             cout << "\tAuthor #" << author.authorID << " Data\n";
             cout << "Author Name: " << author.authorName << "\n";
             cout << "Author Address: " << author.address << "\n";
         }
         else cout << "\tAuthor does not exist\n";
+        cin.ignore(); // To keep input stream clean
     }
 
     // Print book using ISBN
@@ -479,12 +479,12 @@ public:
             books.getline(book.ISBN, 15, '|');
             books.getline(book.bookTitle, 30, '|');
             books.getline(book.authorID, 15, '|');
-            cin.ignore();
             cout << "\tBook with ISBN #" << book.ISBN << " Data\n";
             cout << "Book Title: " << book.bookTitle << "\n";
             cout << "Author ID: " << book.authorID << "\n";
         }
         else cout << "\tBook does not exist\n";
+        cin.ignore(); // To keep input stream clean
     }
 
     // Handle the select query
