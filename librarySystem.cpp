@@ -470,8 +470,8 @@ public:
         int ISBN;
         cout << "Enter Book ISBN: ";
         cin >> ISBN;
-        auto id = authorsPrimaryIndex.lower_bound(ISBN);
-        if (id != authorsPrimaryIndex.end() && id->first == ISBN) {
+        auto id = booksPrimaryIndex.lower_bound(ISBN);
+        if (id != booksPrimaryIndex.end() && id->first == ISBN) {
             int offset = id->second;
             fstream books(booksFile, ios::in | ios::binary);
             books.seekg(offset + 1, ios::beg);
@@ -479,7 +479,7 @@ public:
             books.getline(book.ISBN, 15, '|');
             books.getline(book.bookTitle, 30, '|');
             books.getline(book.authorID, 15, '|');
-            cout << "Book ID: " << book.ISBN << "\n";
+            cout << "Book ISBN: " << book.ISBN << "\n";
             cout << "Book Title: " << book.bookTitle << "\n";
             cout << "Author ID: " << book.authorID << "\n";
         }
