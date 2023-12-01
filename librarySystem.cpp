@@ -3,16 +3,19 @@
 using namespace std;
 
 // Library class to manage all methods
-class Library {
+class Library
+{
 private:
     // Save author information
-    struct Author {
+    struct Author
+    {
         char authorID[15];
         char authorName[30];
         char address[30];
     };
     // Save book information
-    struct Book {
+    struct Book
+    {
         char ISBN[15];
         char bookTitle[30];
         char authorID[15];
@@ -30,17 +33,19 @@ private:
 
     const char lengthDelimiter = '|';  // Delimiter to separate length indicator from record data
     short isAuthorPrimIdxUpToDate = 0; // Flag to track the status of the authors primary index file
-    short isBookPrimIdxUpToDate = 0;   // Flag to track the status of the books primary index file
+    // short isBookPrimIdxUpToDate = 0;   // Flag to track the status of the books primary index file
+    bool upToDateFlag = false; // Flag to track the status of the secondary index files
 
-    map<int, short> authorsPrimaryIndex;      // (Author ID, byte offset) Authors primary index
-    map<char[30], int> authorsSecondaryIndex; // (Author Name, First record in linked list) Authors secondary index
+    map<long long, short> authorsPrimaryIndex; // (Author ID, byte offset) Authors primary index
+    map<long long, int> authorsSecondaryIndex; // (Author Name, First record in linked list) Authors secondary index
 
-    map<int, short> booksPrimaryIndex;      // (ISBN, byte offset) Books primary index
-    map<char[15], int> booksSecondaryIndex; // (Author ID, First record in linked list) Books secondary index
+    map<long long, short> booksPrimaryIndex; // (ISBN, byte offset) Books primary index
+    map<long long, int> booksSecondaryIndex; // (Author ID, First record in linked list) Books secondary index
 
 public:
     // Create the author primary index file
-    void createAuthorPrimaryIndex() {
+    void createAuthorPrimaryIndex()
+    {
         // Open the data file in input mode
         fstream authors(authorsFile, ios::in | ios::binary);
 
@@ -48,22 +53,20 @@ public:
         authors.seekg(2, ios::beg);
 
         // Create the index file
-        while (authors) { // Read the record size to be able to jump to the end of the record
+        while (authors)
+        { // Read the record size to be able to jump to the end of the record
             short recordSize;
-            authors.read((char *) &recordSize, sizeof(short));
+            authors.read((char *)&recordSize, sizeof(short));
             // Store the byte offset of the current record
             short tempOffset = authors.tellg();
             if (tempOffset == -1) // If the file has no records, just the header
                 break;
+
             // Read the value of author id
-            int tempID = 0;
             char authorID[15];
-            authors.read((char *) &authorID, sizeof(authorID));
-            // Convert the authorID from character array into integer
-            for (int i = 0; authorID[i] != '\0' and authorID[i] != lengthDelimiter; i++) {
-                tempID *= 10;
-                tempID += (authorID[i] - '0');
-            }
+            authors.read((char *)&authorID, sizeof(authorID));
+            long long tempID = convertCharArrToLongLong(authorID);
+
             // Jump to the next record, minus 17 to compensate the read of the record size itself (2 bytes)
             // And the rest (15 bytes) to compensate the dummy read of authorID character array
             authors.seekg(recordSize - 17, ios::cur);
@@ -79,7 +82,7 @@ public:
         // Before appending any records in it
         isAuthorPrimIdxUpToDate = 0;
         authorPrimIdx.seekp(0, ios::beg);
-        authorPrimIdx.write((char *) &isAuthorPrimIdxUpToDate, sizeof(short));
+        authorPrimIdx.write((char *)&isAuthorPrimIdxUpToDate, sizeof(short));
         authorPrimIdx.close();
 
         // Save the index file to disk
@@ -87,13 +90,14 @@ public:
     }
 
     // Retrieve data from the map & write it back to the physical file on disk
-    void saveAuthorPrimaryIndex() {
+    void saveAuthorPrimaryIndex()
+    {
         // Open the file in multiple modes
         fstream authorPrimIdx(authorsPrimaryIndexFile, ios::in | ios::out | ios::binary);
 
         // Read the status flag
         authorPrimIdx.seekg(0, ios::beg);
-        authorPrimIdx.read((char *) &isAuthorPrimIdxUpToDate, sizeof(short));
+        authorPrimIdx.read((char *)&isAuthorPrimIdxUpToDate, sizeof(short));
 
         // If the file is already up to date, do not write & exit
         if (isAuthorPrimIdxUpToDate == 1)
@@ -101,20 +105,22 @@ public:
 
         // Otherwise if the file is not up to date OR it is the first time to save it, write it to disk
         // Update the index file by rewriting it back to disk after inserting into the map
-        for (auto record: authorsPrimaryIndex) {
-            authorPrimIdx.write((char *) &record.first, sizeof(int));    // Write the authorID
-            authorPrimIdx.write((char *) &record.second, sizeof(short)); // Write the byte offset
+        for (auto record : authorsPrimaryIndex)
+        {
+            authorPrimIdx.write((char *)&record.first, sizeof(int));    // Write the authorID
+            authorPrimIdx.write((char *)&record.second, sizeof(short)); // Write the byte offset
         }
 
         // Update the file status to be up to date, by setting isAuthorPrimIdxUpToDate to 1
         isAuthorPrimIdxUpToDate = 1;
         authorPrimIdx.seekp(0, ios::beg);
-        authorPrimIdx.write((char *) &isAuthorPrimIdxUpToDate, sizeof(short));
+        authorPrimIdx.write((char *)&isAuthorPrimIdxUpToDate, sizeof(short));
         authorPrimIdx.close();
     }
 
     // Load authors primary index file into memory
-    void loadAuthorPrimaryIndex() {
+    void loadAuthorPrimaryIndex()
+    {
         // Open the index file in input mode
         fstream authorPrimIdx(authorsPrimaryIndexFile, ios::in | ios::binary);
 
@@ -124,22 +130,24 @@ public:
 
         // Check the status field
         authorPrimIdx.seekg(0, ios::beg);
-        authorPrimIdx.read((char *) &isAuthorPrimIdxUpToDate, sizeof(short));
+        authorPrimIdx.read((char *)&isAuthorPrimIdxUpToDate, sizeof(short));
 
         // If the file is outdated, recreate it
-        if (isAuthorPrimIdxUpToDate != 1) {
+        if (isAuthorPrimIdxUpToDate != 1)
+        {
             createAuthorPrimaryIndex();
             return;
         }
 
         // Insert all records into the authors primary index map
-        while (authorPrimIdx) { // If reached the end of file, exit
+        while (authorPrimIdx)
+        { // If reached the end of file, exit
             if (authorPrimIdx.tellg() == endOffset)
                 break;
             int tempID;
             short tempOffset;
-            authorPrimIdx.read((char *) &tempID, sizeof(int));
-            authorPrimIdx.read((char *) &tempOffset, sizeof(short));
+            authorPrimIdx.read((char *)&tempID, sizeof(int));
+            authorPrimIdx.read((char *)&tempOffset, sizeof(short));
             // Insert the record into the map to be sorted in memory by the author id
             authorsPrimaryIndex.insert({tempID, tempOffset});
         }
@@ -147,7 +155,8 @@ public:
     }
 
     // Add a new author helper function
-    void addAuthor() {
+    void addAuthor()
+    {
         // Get author data from the user & store it in an Author object
         Author newAuthor;
         cout << "Enter author ID: ";
@@ -161,14 +170,15 @@ public:
     }
 
     // Add the new author to the main authors data file
-    void addAuthorToDataFile(Author &author) {
+    void addAuthorToDataFile(Author &author)
+    {
         short header, recordSize, idSize, nameSize, addSize;
         // Open the file in multiple modes
         fstream authors(authorsFile, ios::in | ios::out | ios::app | ios::binary);
 
         // Read the header of the file
         authors.seekg(0);
-        authors.read((char *) &header, sizeof(header));
+        authors.read((char *)&header, sizeof(header));
 
         // Get the sizes of the id, name & address
         idSize = strlen(author.authorID);
@@ -181,17 +191,18 @@ public:
         recordSize = idSize + nameSize + addSize + 5;
 
         // If the avail list is empty, insert at the end of the file
-        if (header == -1) {
+        if (header == -1)
+        {
             authors.seekp(0, ios::end); // Seek to the end of file
-            authors.write((char *) &recordSize, sizeof(recordSize));
+            authors.write((char *)&recordSize, sizeof(recordSize));
             short offset = authors.tellp(); // Store the byteoffset of the new record
             // Write the rest of record fields separated by delimeters
             authors.write(author.authorID, idSize);
-            authors.write((char *) &lengthDelimiter, 1);
+            authors.write((char *)&lengthDelimiter, 1);
             authors.write(author.authorName, nameSize);
-            authors.write((char *) &lengthDelimiter, 1);
+            authors.write((char *)&lengthDelimiter, 1);
             authors.write(author.address, addSize);
-            authors.write((char *) &lengthDelimiter, 1);
+            authors.write((char *)&lengthDelimiter, 1);
             // Add the new author to the primary index file
             addAuthorToPrimaryIndexFile(author.authorID, offset);
             cout << "\tNew Author Added Successfully!\n";
@@ -200,13 +211,9 @@ public:
     }
 
     // Add the new author to the primary index file
-    void addAuthorToPrimaryIndexFile(char authorID[], short byteOffest) {
-        int authID = 0;
-        // Convert the authorID from character array into integer
-        for (int i = 0; authorID[i] != '\0'; i++) {
-            authID *= 10;
-            authID += (authorID[i] - '0');
-        }
+    void addAuthorToPrimaryIndexFile(char authorID[], short byteOffest)
+    {
+        long long authID = convertCharArrToLongLong(authorID);
 
         // Insert the new record into the map to be automatically sorted by authorID
         authorsPrimaryIndex.insert({authID, byteOffest});
@@ -216,7 +223,7 @@ public:
         // Update the status of the file to be NOT up to date, to save it to the disk afterward
         isAuthorPrimIdxUpToDate = 0;
         authorPrimIdx.seekp(0);
-        authorPrimIdx.write((char *) &isAuthorPrimIdxUpToDate, sizeof(short));
+        authorPrimIdx.write((char *)&isAuthorPrimIdxUpToDate, sizeof(short));
         authorPrimIdx.close();
     }
 
@@ -225,7 +232,8 @@ public:
     void addAuthorToSecondaryIndexLinkedListFile(Author author) {}
 
     // Create the book primary index file
-    void createBookPrimaryIndex() {
+    void createBookPrimaryIndex()
+    {
         // Open the data file in input mode
         fstream books(booksFile, ios::in | ios::binary);
 
@@ -233,22 +241,38 @@ public:
         books.seekg(2, ios::beg);
 
         // Create the index file
-        while (books) { // Read the record size to be able to jump to the end of the record
+        while (books)
+        {
+            int recordOffset = books.tellg();
+            char firstChar;
+            books.read((char *)&firstChar, sizeof(char));
+            // if the record is deleted
+            if (firstChar == '*')
+            {
+                short previousRecord, recordSize;
+                books.ignore(1);                                    // ignore the delimiter
+                books.read((char *)&previousRecord, sizeof(short)); // read the previous record
+                books.ignore(1);                                    // ignore the delimiter
+                books.read((char *)&recordSize, sizeof(short));     // read the record size
+                books.seekg(recordOffset + recordSize, ios::beg);   // jump to the next record
+                continue;
+            }
+            else
+            {
+                books.seekg(-1, ios::cur);
+            }
+            // Read the record size to be able to jump to the end of the record
             short recordSize;
-            books.read((char *) &recordSize, sizeof(short));
+            books.read((char *)&recordSize, sizeof(short));
             // Store the byte offset of the current record
             short tempOffset = books.tellg();
             if (tempOffset == -1) // If the file has no records, just the header
                 break;
             // Read the value of book isbn
-            int tempISBN = 0;
             char ISBN[15];
-            books.read((char *) &ISBN, sizeof(ISBN));
-            // Convert the ISBN from character array into integer
-            for (int i = 0; ISBN[i] != '\0' and ISBN[i] != lengthDelimiter; i++) {
-                tempISBN *= 10;
-                tempISBN += (ISBN[i] - '0');
-            }
+            books.read((char *)&ISBN, sizeof(ISBN));
+            int tempISBN = convertCharArrToLongLong(ISBN);
+
             // Jump to the next record, minus 17 to compensate the read of the record size itself (2 bytes)
             // And the rest (15 bytes) to compensate the dummy read of ISBN character array
             books.seekg(recordSize - 17, ios::cur);
@@ -257,49 +281,42 @@ public:
         }
         books.close();
 
-        // Open the file in output mode
-        fstream bookPrimIdx(booksPrimaryIndexFile, ios::out | ios::binary);
-
-        // Write the status flag at the beginning of the file
-        // Before appending any records in it
-        isBookPrimIdxUpToDate = 0;
-        bookPrimIdx.seekp(0, ios::beg);
-        bookPrimIdx.write((char *) &isBookPrimIdxUpToDate, sizeof(short));
-        bookPrimIdx.close();
-
+        markBooksPrimaryIndexFlag(!upToDateFlag);
         // Save the index file to disk
         saveBookPrimaryIndex();
     }
 
     // Retrieve data from the map & write it back to the physical file on disk
-    void saveBookPrimaryIndex() {
+    void saveBookPrimaryIndex()
+    {
         // Open the file in multiple modes
         fstream bookPrimIdx(booksPrimaryIndexFile, ios::in | ios::out | ios::binary);
 
         // Read the status flag
         bookPrimIdx.seekg(0, ios::beg);
-        bookPrimIdx.read((char *) &isBookPrimIdxUpToDate, sizeof(short));
+        short flag;
+        bookPrimIdx.read((char *)&flag, sizeof(flag));
 
         // If the file is already up to date, do not write & exit
-        if (isBookPrimIdxUpToDate == 1)
+        if (flag == upToDateFlag)
             return;
 
         // Otherwise if the file is not up to date OR it is the first time to save it, write it to disk
         // Update the index file by rewriting it back to disk after inserting into the map
-        for (auto record: booksPrimaryIndex) {
-            bookPrimIdx.write((char *) &record.first, sizeof(int));    // Write the ISBN
-            bookPrimIdx.write((char *) &record.second, sizeof(short)); // Write the byte offset
+        for (auto record : booksPrimaryIndex)
+        {
+            bookPrimIdx.write((char *)&record.first, sizeof(int));    // Write the ISBN
+            bookPrimIdx.write((char *)&record.second, sizeof(short)); // Write the byte offset
         }
 
-        // Update the file status to be up to date, by setting isBookPrimIdxUpToDate to 1
-        isBookPrimIdxUpToDate = 1;
-        bookPrimIdx.seekp(0, ios::beg);
-        bookPrimIdx.write((char *) &isBookPrimIdxUpToDate, sizeof(short));
         bookPrimIdx.close();
+
+        markBooksPrimaryIndexFlag(upToDateFlag);
     }
 
     // Load books primary index file into memory
-    void loadBookPrimaryIndex() {
+    void loadBookPrimaryIndex()
+    {
         // Open the index file in input mode
         fstream bookPrimIdx(booksPrimaryIndexFile, ios::in | ios::binary);
 
@@ -309,22 +326,25 @@ public:
 
         // Check the status field
         bookPrimIdx.seekg(0, ios::beg);
-        bookPrimIdx.read((char *) &isBookPrimIdxUpToDate, sizeof(short));
+        short flag;
+        bookPrimIdx.read((char *)&flag, sizeof(flag));
 
         // If the file is outdated, recreate it
-        if (isBookPrimIdxUpToDate != 1) {
+        if (flag != upToDateFlag)
+        {
             createBookPrimaryIndex();
             return;
         }
 
         // Insert all records into the books primary index map
-        while (bookPrimIdx) { // If reached the end of file, exit
+        while (bookPrimIdx)
+        { // If reached the end of file, exit
             if (bookPrimIdx.tellg() == endOffset)
                 break;
             int tempISBN;
             short tempOffset;
-            bookPrimIdx.read((char *) &tempISBN, sizeof(int));
-            bookPrimIdx.read((char *) &tempOffset, sizeof(short));
+            bookPrimIdx.read((char *)&tempISBN, sizeof(int));
+            bookPrimIdx.read((char *)&tempOffset, sizeof(short));
             // Insert the record into the map to be sorted in memory by the book isbn
             booksPrimaryIndex.insert({tempISBN, tempOffset});
         }
@@ -332,7 +352,8 @@ public:
     }
 
     // Add a new book helper function
-    void addBook() {
+    void addBook()
+    {
         // Get book data from the user & store it in a Book object
         Book newBook;
         cout << "Enter book ISBN: ";
@@ -346,14 +367,15 @@ public:
     }
 
     // Add the new book to the main books data file
-    void addBookToDataFile(Book &book) {
+    void addBookToDataFile(Book &book)
+    {
         short header, recordSize, isbnSize, titleSize, authIdSize;
         // Open the file in multiple modes
         fstream books(booksFile, ios::in | ios::out | ios::app | ios::binary);
 
         // Read the header of the file
         books.seekg(0);
-        books.read((char *) &header, sizeof(header));
+        books.read((char *)&header, sizeof(header));
 
         // Get the sizes of the isbn, title & author id
         isbnSize = strlen(book.ISBN);
@@ -366,17 +388,18 @@ public:
         recordSize = isbnSize + titleSize + authIdSize + 5;
 
         // If the avail list is empty, insert at the end of the file
-        if (header == -1) {
+        if (header == -1)
+        {
             books.seekp(0, ios::end); // Seek to the end of file
-            books.write((char *) &recordSize, sizeof(recordSize));
+            books.write((char *)&recordSize, sizeof(recordSize));
             short offset = books.tellp(); // Store the byteoffset of the new record
             // Write the rest of record fields separated by delimeters
             books.write(book.ISBN, isbnSize);
-            books.write((char *) &lengthDelimiter, 1);
+            books.write((char *)&lengthDelimiter, 1);
             books.write(book.bookTitle, titleSize);
-            books.write((char *) &lengthDelimiter, 1);
+            books.write((char *)&lengthDelimiter, 1);
             books.write(book.authorID, authIdSize);
-            books.write((char *) &lengthDelimiter, 1);
+            books.write((char *)&lengthDelimiter, 1);
             // Add the new book to the primary index file
             addBookToPrimaryIndexFile(book.ISBN, offset);
             cout << "\tNew Book Added Successfully!\n";
@@ -385,24 +408,12 @@ public:
     }
 
     // Add the new book to the primary index file
-    void addBookToPrimaryIndexFile(char ISBN[], short byteOffest) {
-        int bookISBN = 0;
-        // Convert the ISBN from character array into integer
-        for (int i = 0; ISBN[i] != '\0'; i++) {
-            bookISBN *= 10;
-            bookISBN += (ISBN[i] - '0');
-        }
-
+    void addBookToPrimaryIndexFile(char ISBN[], short byteOffest)
+    {
+        long long bookISBN = convertCharArrToLongLong(ISBN);
         // Insert the new record into the map to be automatically sorted by ISBN
         booksPrimaryIndex.insert({bookISBN, byteOffest});
-
-        // Open the index file in output mode
-        fstream bookPrimIdx(booksPrimaryIndexFile, ios::out | ios::binary);
-        // Update the status of the file to be NOT up to date, to save it to the disk afterward
-        isBookPrimIdxUpToDate = 0;
-        bookPrimIdx.seekp(0);
-        bookPrimIdx.write((char *) &isBookPrimIdxUpToDate, sizeof(short));
-        bookPrimIdx.close();
+        markBooksPrimaryIndexFlag(!upToDateFlag);
     }
 
     void addBookToSecondaryIndexFile(Book book) {}
@@ -433,23 +444,81 @@ public:
     void deleteFromAuthorsSecondaryIndexLinkedListFile(int firstPosition, char authorId[30]) {}
 
     // Delete a book using ISBN
-    void deleteBook() {}
+    void deleteBook()
+    {
+        long long ISBN;
+        cout << "Enter Book ISBN: ";
+        cin >> ISBN;
+        cin.ignore();
+        auto isbn = booksPrimaryIndex.lower_bound(ISBN);
+        if (isbn != booksPrimaryIndex.end() && isbn->first == ISBN)
+        {
+            short recordStartoffset = isbn->second - 2;
+            deleteFromBooksDataFile(recordStartoffset);
+            deleteFromBooksPrimaryIndexFile(ISBN);
+            deleteFromBooksSecondaryIndexFile(getBookAuthorIdAt(recordStartoffset));
+        }
+        else
+        {
+            cout << "\tBook does not exist\n";
+        }
+    }
 
-    void deleteFromBooksDataFile(int byteOffset) {}
+    void deleteFromBooksDataFile(int recordStartoffset)
+    {
+        fstream books(booksFile, ios::in | ios::out | ios::binary);
+        short header, recordSize;
+        books.read((char *)&header, sizeof(header));
+        books.seekg(recordStartoffset, ios::beg);
+        books.read((char *)&recordSize, sizeof(short));
+        // string overrideText = "*|" + to_string(header) + "|" + to_string(recordSize) + "|";
+        books.seekp(recordStartoffset, ios::beg);
+        books.write((char *)"*", 1);
+        books.write((char *)&lengthDelimiter, 1);
+        books.write((char *)&header, sizeof(header));
+        books.write((char *)&lengthDelimiter, 1);
+        books.write((char *)&recordSize, sizeof(recordSize));
+        books.write((char *)&lengthDelimiter, 1);
+        // update the header
+        books.seekp(0, ios::beg);
+        books.write((char *)&recordStartoffset, sizeof(short));
+        books.close();
+    }
 
-    void deleteFromBooksPrimaryIndexFile(char ISBN[15]) {}
+    void deleteFromBooksPrimaryIndexFile(int ISBN)
+    {
+        booksPrimaryIndex.erase(ISBN);
+        markBooksPrimaryIndexFlag(!upToDateFlag);
+    }
 
-    void deleteFromBooksSecondaryIndexFile(char authorId[30]) {}
+    long long getBookAuthorIdAt(short startOffset)
+    {
+        fstream books(booksFile, ios::in | ios::binary);
+        Book tmpBook;
+        books.seekg(startOffset, ios::beg);
+        books.ignore(2); // ignore the record size
+        books.getline(tmpBook.ISBN, 15, '|');
+        books.getline(tmpBook.bookTitle, 30, '|');
+        books.getline(tmpBook.authorID, 15, '|');
+        books.close();
+        return convertCharArrToLongLong(tmpBook.authorID);
+    }
+
+    void deleteFromBooksSecondaryIndexFile(long long authorId)
+    {
+    }
 
     void deleteFromBooksSecondaryIndexLinkedListFile(int firstPosition, char ISBN[15]) {}
 
     // Print author using author ID
-    void printAuthor() {
+    void printAuthor()
+    {
         int authorID;
         cout << "Enter author ID: ";
         cin >> authorID;
         auto id = authorsPrimaryIndex.lower_bound(authorID);
-        if (id != authorsPrimaryIndex.end() && id->first == authorID) {
+        if (id != authorsPrimaryIndex.end() && id->first == authorID)
+        {
             int offset = id->second;
             fstream authors(authorsFile, ios::in | ios::binary);
             authors.seekg(offset, ios::beg);
@@ -461,17 +530,21 @@ public:
             cout << "Author Name: " << author.authorName << "\n";
             cout << "Author Address: " << author.address << "\n";
         }
-        else cout << "\tAuthor does not exist\n";
+        else
+            cout << "\tAuthor does not exist\n";
         cin.ignore(); // To keep input stream clean
     }
 
     // Print book using ISBN
-    void printBook() {
+    void printBook()
+    {
         int ISBN;
         cout << "Enter Book ISBN: ";
         cin >> ISBN;
+        cin.ignore(); // To keep input stream clean
         auto isbn = booksPrimaryIndex.lower_bound(ISBN);
-        if (isbn != booksPrimaryIndex.end() && isbn->first == ISBN) {
+        if (isbn != booksPrimaryIndex.end() && isbn->first == ISBN)
+        {
             int offset = isbn->second;
             fstream books(booksFile, ios::in | ios::binary);
             books.seekg(offset, ios::beg);
@@ -483,27 +556,268 @@ public:
             cout << "Book Title: " << book.bookTitle << "\n";
             cout << "Author ID: " << book.authorID << "\n";
         }
-        else cout << "\tBook does not exist\n";
+        else
+            cout << "\tBook does not exist\n";
         cin.ignore(); // To keep input stream clean
     }
 
     // Handle the select query
-    void writeQuery() {
-//        string selectedColumns, tables, condition;
-//        int fromPointer = (int)query.find("from");
-//        int wherePointer = (int)query.find("where");
-//        selectedColumns = query.substr(7, fromPointer - 7);
-//        tables
+    void writeQuery()
+    {
+        //        string selectedColumns, tables, condition;
+        //        int fromPointer = (int)query.find("from");
+        //        int wherePointer = (int)query.find("where");
+        //        selectedColumns = query.substr(7, fromPointer - 7);
+        //        tables
+    }
+
+    // Utilities
+    void checkFilesExist()
+    {
+        fstream authors(authorsFile, ios::in | ios::binary);
+        // check if the file exists
+        if (!authors)
+        {
+            // create the file
+            authors.open(authorsFile, ios::out | ios::binary);
+            // write the header
+            short header = -1;
+            authors.write((char *)&header, sizeof(header));
+            authors.close();
+        }
+
+        fstream books(booksFile, ios::in | ios::binary);
+        // check if the file exists
+        if (!books)
+        {
+            // create the file
+            books.open(booksFile, ios::out | ios::binary);
+            // write the header
+            short header = -1;
+            books.write((char *)&header, sizeof(header));
+            books.close();
+        }
+
+        fstream authorsPrimIdx(authorsPrimaryIndexFile, ios::in | ios::binary);
+        // check if the file exists
+        if (!authorsPrimIdx)
+        {
+            // create the file
+            authorsPrimIdx.open(authorsPrimaryIndexFile, ios::out | ios::binary);
+            // write the header
+            short flag = upToDateFlag;
+            authorsPrimIdx.write((char *)&flag, sizeof(flag));
+            authorsPrimIdx.close();
+        }
+
+        fstream booksPrimIdx(booksPrimaryIndexFile, ios::in | ios::binary);
+        // check if the file exists
+        if (!booksPrimIdx)
+        {
+            // create the file
+            booksPrimIdx.open(booksPrimaryIndexFile, ios::out | ios::binary);
+            // write the header
+            short flag = upToDateFlag;
+            booksPrimIdx.write((char *)&flag, sizeof(flag));
+            booksPrimIdx.close();
+        }
+    }
+
+    void markBooksPrimaryIndexFlag(short value)
+    {
+        fstream booksPrimaryFile(booksPrimaryIndexFile, ios::out | ios::binary);
+        booksPrimaryFile.write((char *)&value, sizeof(value));
+        booksPrimaryFile.close();
+    }
+
+    void markBooksSecondaryIndexFlag(short value)
+    {
+        fstream booksSecondaryFile(booksSecondaryIndexFile, ios::out | ios::binary);
+        booksSecondaryFile.write((char *)&value, sizeof(value));
+        booksSecondaryFile.close();
+    }
+
+    void markAuthorsPrimaryIndexFlag(short value)
+    {
+        fstream authorsPrimaryFile(authorsPrimaryIndexFile, ios::out | ios::binary);
+        authorsPrimaryFile.write((char *)&value, sizeof(value));
+        authorsPrimaryFile.close();
+    }
+
+    void markAuthorsSecondaryIndexFlag(short value)
+    {
+        fstream authorsSecondaryFile(authorsSecondaryIndexFile, ios::out | ios::binary);
+        authorsSecondaryFile.write((char *)&value, sizeof(value));
+        authorsSecondaryFile.close();
+    }
+
+    long long convertCharArrToLongLong(char arr[])
+    {
+        long long num = 0;
+        for (int i = 0; arr[i] != '\0'; i++)
+        {
+            num *= 10;
+            num += (arr[i] - '0');
+        }
+        return num;
+    }
+
+    // For testing only
+    void printBooksFile()
+    {
+        cout << "----------------------------\n";
+        fstream books(booksFile, ios::in | ios::binary);
+
+        books.seekg(0, ios::end);
+        int fileEndOffset = books.tellg();
+        books.seekg(0, ios::beg);
+
+        short header;
+        books.read((char *)&header, sizeof(header));
+        cout << "Avail list header: " << header << "\n";
+        while (books)
+        {
+            int recordOffset = books.tellg();
+            if (recordOffset == fileEndOffset or recordOffset == -1)
+                break;
+            cout << "\n-------- "
+                 << "Record Offset: " << recordOffset << " --------\n";
+            char firstChar;
+            books.read((char *)&firstChar, sizeof(char));
+            // if the record is deleted
+            if (firstChar == '*')
+            {
+                short previousRecord, recordSize;
+                books.ignore(1);                                    // ignore the delimiter
+                books.read((char *)&previousRecord, sizeof(short)); // read the previous record
+                books.ignore(1);                                    // ignore the delimiter
+                books.read((char *)&recordSize, sizeof(short));     // read the record size
+                books.seekg(recordOffset + recordSize, ios::beg);   // jump to the next record
+                cout << "%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n";
+                cout << "Redcord deleted\n";
+                cout << "Previous deleted record: " << previousRecord << "\n";
+                cout << "Record Size: " << recordSize << "\n";
+                cout << "%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n";
+                continue;
+            }
+            else
+            {
+                books.seekg(-1, ios::cur);
+            }
+            cout << "############################\n";
+            short recordSize;
+            books.read((char *)&recordSize, sizeof(short));
+            if (recordSize == -1)
+                break;
+            cout << "Record Size: " << recordSize << "\n";
+            Book book;
+            books.getline(book.ISBN, 15, '|');
+            books.getline(book.bookTitle, 30, '|');
+            books.getline(book.authorID, 15, '|');
+            if (books.peek() == '|')
+            {
+                books.seekg(1, ios::cur);
+            }
+            cout << "\tBook with ISBN #" << book.ISBN << " - ";
+            cout << "Book Title: " << book.bookTitle << " - ";
+            cout << "Author ID: " << book.authorID << "\n";
+            cout << "############################\n";
+        }
+        books.close();
+    }
+
+    void printBooksFileAsPlainText()
+    {
+        cout << "--------------\n";
+        cout << "Books whole File:\n";
+        fstream books(booksFile, ios::in | ios::binary);
+        short header;
+        books.read((char *)&header, sizeof(header));
+        cout << "Header: " << header << "\n";
+        string wholeText;
+        getline(books, wholeText);
+        cout << wholeText << "\n";
+        cout << "--------------\n";
+        books.close();
+    }
+
+    void printAuthorsFile()
+    {
+        cout << "--------------\n";
+        fstream authors(authorsFile, ios::in | ios::binary);
+        short header;
+        authors.read((char *)&header, sizeof(header));
+        cout << "Header: " << header << "\n";
+        while (authors.eof() == false)
+        {
+            cout << "##############\n";
+            short recordSize;
+            authors.read((char *)&recordSize, sizeof(short));
+            if (recordSize == -1)
+                break;
+            cout << "Record Size: " << recordSize << "\n";
+            Author author;
+            authors.getline(author.authorID, 15, '|');
+            authors.getline(author.authorName, 30, '|');
+            authors.getline(author.address, 30, '|');
+            cout << "\tAuthor #" << author.authorID << " - ";
+            cout << "Author Name: " << author.authorName << " - ";
+            cout << "Author Address: " << author.address << "\n";
+        }
+        authors.close();
+    }
+
+    void printAuthorsPrimaryIndex()
+    {
+        cout << "--------------\n";
+        cout << "Authors Primary Index:\n";
+        for (auto record : authorsPrimaryIndex)
+        {
+            cout << record.first << " " << record.second << "\n";
+        }
+    }
+
+    void printBooksPrimaryIndex()
+    {
+        cout << "--------------\n";
+        cout << "Books Primary Index:\n";
+        for (auto record : booksPrimaryIndex)
+        {
+            cout << record.first << " " << record.second << "\n";
+        }
+    }
+
+    void printAuthorsSecondaryIndex()
+    {
+        cout << "--------------\n";
+        cout << "Authors Secondary Index:\n";
+        for (auto record : authorsSecondaryIndex)
+        {
+            cout << record.first << " " << record.second << "\n";
+        }
+    }
+
+    void printBooksSecondaryIndex()
+    {
+        cout << "--------------\n";
+        cout << "Books Secondary Index:\n";
+        for (auto record : booksSecondaryIndex)
+        {
+            cout << record.first << " " << record.second << "\n";
+        }
     }
 
     // Main method to start the program
-    void start() {
+    void start()
+    {
         cout << "\tWelcome to the Library Catalog System!\n";
+        checkFilesExist();
         // Load index files into memory
         loadAuthorPrimaryIndex();
         loadBookPrimaryIndex();
         // Loop until user exits
-        while (true) {
+        while (true)
+        {
             cout << "\n1. Add New Author\n"
                     "2. Add New Book\n"
                     "3. Update Author Name (Author ID)\n"
@@ -513,36 +827,83 @@ public:
                     "7. Print Author (Author ID)\n"
                     "8. Print Book (ISBN)\n"
                     "9. Write Query\n"
-                    "10. Exit\n";
+                    "10. Exit\n"
+                    "11. Print Authors File\n"
+                    "12. Print Books File\n"
+                    "13. Print Authors Primary Index\n"
+                    "14. Print Books Primary Index\n"
+                    "15. Print Authors Secondary Index\n"
+                    "16. Print Books Secondary Index\n";
             cout << "Please Enter Choice (1-10) ==> ";
             string choice;
             getline(cin, choice);
-            if (choice == "1") {
+            if (choice == "1")
+            {
                 cout << "\tAdding New Author\n";
                 addAuthor();
-            } else if (choice == "2") {
+            }
+            else if (choice == "2")
+            {
                 cout << "\tAdding New Book\n";
                 addBook();
             }
-            else if (choice == "7"){
+            else if (choice == "5")
+            {
+                deleteBook();
+            }
+            else if (choice == "7")
+            {
                 cout << "\tPrinting Author Using ID\n";
                 printAuthor();
-            } else if (choice == "8"){
+            }
+            else if (choice == "8")
+            {
                 cout << "\tPrinting Book Using ISBN\n";
                 printBook();
-            } else if (choice == "9"){
+            }
+            else if (choice == "9")
+            {
                 writeQuery();
-            } else if (choice == "10") {
+            }
+            else if (choice == "10")
+            {
                 terminate();
                 break;
-            } else {
+            }
+            else if (choice == "11")
+            {
+                printAuthorsFile();
+            }
+            else if (choice == "12")
+            {
+                printBooksFile();
+            }
+            else if (choice == "13")
+            {
+                printAuthorsPrimaryIndex();
+            }
+            else if (choice == "14")
+            {
+                printBooksPrimaryIndex();
+            }
+            else if (choice == "15")
+            {
+                printAuthorsSecondaryIndex();
+            }
+            else if (choice == "16")
+            {
+                printBooksSecondaryIndex();
+            }
+            else
+            {
                 cerr << "\n\tINVALID CHOICE!!\n";
             }
         }
     }
 
     // Terminate the program correctly with saved changes
-    void terminate() {
+    void terminate()
+    {
         // Save the primary index files to the disk with the updated indices
         saveAuthorPrimaryIndex();
         saveBookPrimaryIndex();
@@ -551,7 +912,8 @@ public:
 };
 
 // Start the program
-int main() {
+int main()
+{
     Library lib;
     lib.start();
     return 0;
