@@ -31,10 +31,7 @@ private:
     const string booksSecondaryIndexFile = "booksSecondaryIndex.txt";                     // Books secondary index file
     const string booksSecondaryIndexLinkedListFile = "booksSecondaryIndexLinkedList.txt"; // Books secondary index linked list file
 
-    const char lengthDelimiter = '|';  // Delimiter to separate length indicator from record data
-    short isAuthorPrimIdxUpToDate = 0; // Flag to track the status of the authors primary index file
-    // short isBookPrimIdxUpToDate = 0;   // Flag to track the status of the books primary index file
-    bool upToDateFlag = false; // Flag to track the status of the secondary index files
+    const char lengthDelimiter = '|'; // Delimiter to separate length indicator from record data
 
     map<long long, short> authorsPrimaryIndex; // (Author ID, byte offset) Authors primary index
     map<long long, int> authorsSecondaryIndex; // (Author Name, First record in linked list) Authors secondary index
@@ -77,15 +74,8 @@ public:
         }
         authors.close();
 
-        // Open the file in output mode
-        fstream authorPrimIdx(authorsPrimaryIndexFile, ios::out | ios::binary);
-
         // Write the status flag at the beginning of the file
-        // Before appending any records in it
-        isAuthorPrimIdxUpToDate = 0;
-        authorPrimIdx.seekp(0, ios::beg);
-        authorPrimIdx.write((char *)&isAuthorPrimIdxUpToDate, sizeof(short));
-        authorPrimIdx.close();
+        markAuthorsPrimaryIndexFlag('0');
 
         // Save the index file to disk
         saveAuthorPrimaryIndex();
@@ -98,11 +88,12 @@ public:
         fstream authorPrimIdx(authorsPrimaryIndexFile, ios::in | ios::out | ios::binary);
 
         // Read the status flag
+        char isAuthorPrimIdxUpToDate;
         authorPrimIdx.seekg(0, ios::beg);
-        authorPrimIdx.read((char *)&isAuthorPrimIdxUpToDate, sizeof(short));
+        authorPrimIdx.read((char *)&isAuthorPrimIdxUpToDate, sizeof(char));
 
         // If the file is already up to date, do not write & exit
-        if (isAuthorPrimIdxUpToDate == 1)
+        if (isAuthorPrimIdxUpToDate == '1')
             return;
 
         // Otherwise if the file is not up to date OR it is the first time to save it, write it to disk
@@ -112,12 +103,10 @@ public:
             authorPrimIdx.write((char *)&record.first, sizeof(long long)); // Write the authorID
             authorPrimIdx.write((char *)&record.second, sizeof(short));    // Write the byte offset
         }
-
-        // Update the file status to be up to date, by setting isAuthorPrimIdxUpToDate to 1
-        isAuthorPrimIdxUpToDate = 1;
-        authorPrimIdx.seekp(0, ios::beg);
-        authorPrimIdx.write((char *)&isAuthorPrimIdxUpToDate, sizeof(short));
         authorPrimIdx.close();
+
+        // Update the file status to be up to date
+        markAuthorsPrimaryIndexFlag('1');
     }
 
     // Load authors primary index file into memory
@@ -131,11 +120,12 @@ public:
         short endOffset = authorPrimIdx.tellg();
 
         // Check the status field
+        char isAuthorPrimIdxUpToDate;
         authorPrimIdx.seekg(0, ios::beg);
-        authorPrimIdx.read((char *)&isAuthorPrimIdxUpToDate, sizeof(short));
+        authorPrimIdx.read((char *)&isAuthorPrimIdxUpToDate, sizeof(char));
 
         // If the file is outdated, recreate it
-        if (isAuthorPrimIdxUpToDate != 1)
+        if (isAuthorPrimIdxUpToDate != '1')
         {
             createAuthorPrimaryIndex();
             return;
@@ -213,21 +203,16 @@ public:
     }
 
     // Add the new author to the primary index file
-    void addAuthorToPrimaryIndexFile(char authorID[], short byteOffest)
+    void addAuthorToPrimaryIndexFile(char authorID[], short byteOffset)
     {
-        // Convert the authorID from character array into
+        // Convert the authorID from character array into long long
         long long authID = convertCharArrToLongLong(authorID);
 
         // Insert the new record into the map to be automatically sorted by authorID
-        authorsPrimaryIndex.insert({authID, byteOffest});
+        authorsPrimaryIndex.insert({authID, byteOffset});
 
-        // Open the index file in output mode
-        fstream authorPrimIdx(authorsPrimaryIndexFile, ios::out | ios::binary);
         // Update the status of the file to be NOT up to date, to save it to the disk afterward
-        isAuthorPrimIdxUpToDate = 0;
-        authorPrimIdx.seekp(0);
-        authorPrimIdx.write((char *)&isAuthorPrimIdxUpToDate, sizeof(short));
-        authorPrimIdx.close();
+        markAuthorsPrimaryIndexFlag('0');
     }
 
     void addAuthorToSecondaryIndexFile(Author author) {}
@@ -287,7 +272,8 @@ public:
         books.close();
 
         // Write the status flag at the beginning of the file
-        markBooksPrimaryIndexFlag(!upToDateFlag);
+        markBooksPrimaryIndexFlag('0');
+
         // Save the index file to disk
         saveBookPrimaryIndex();
     }
@@ -299,12 +285,12 @@ public:
         fstream bookPrimIdx(booksPrimaryIndexFile, ios::in | ios::out | ios::binary);
 
         // Read the status flag
+        char isBookPrimIdxUpToDate;
         bookPrimIdx.seekg(0, ios::beg);
-        short flag;
-        bookPrimIdx.read((char *)&flag, sizeof(flag));
+        bookPrimIdx.read((char *)&isBookPrimIdxUpToDate, sizeof(char));
 
         // If the file is already up to date, do not write & exit
-        if (flag == upToDateFlag)
+        if (isBookPrimIdxUpToDate == '1')
             return;
 
         // Otherwise if the file is not up to date OR it is the first time to save it, write it to disk
@@ -317,7 +303,7 @@ public:
         bookPrimIdx.close();
 
         // Update the file status to be up to date
-        markBooksPrimaryIndexFlag(upToDateFlag);
+        markBooksPrimaryIndexFlag('1');
     }
 
     // Load books primary index file into memory
@@ -331,12 +317,12 @@ public:
         short endOffset = bookPrimIdx.tellg();
 
         // Check the status field
+        char isBookPrimIdxUpToDate;
         bookPrimIdx.seekg(0, ios::beg);
-        short flag;
-        bookPrimIdx.read((char *)&flag, sizeof(flag));
+        bookPrimIdx.read((char *)&isBookPrimIdxUpToDate, sizeof(char));
 
         // If the file is outdated, recreate it
-        if (flag != upToDateFlag)
+        if (isBookPrimIdxUpToDate != '1')
         {
             createBookPrimaryIndex();
             return;
@@ -414,16 +400,16 @@ public:
     }
 
     // Add the new book to the primary index file
-    void addBookToPrimaryIndexFile(char ISBN[], short byteOffest)
+    void addBookToPrimaryIndexFile(char ISBN[], short byteOffset)
     {
         // Convert the ISBN from character array into long long
         long long bookISBN = convertCharArrToLongLong(ISBN);
 
         // Insert the new record into the map to be automatically sorted by ISBN
-        booksPrimaryIndex.insert({bookISBN, byteOffest});
+        booksPrimaryIndex.insert({bookISBN, byteOffset});
 
         // Update the status of the file to be NOT up to date, to save it to the disk afterward
-        markBooksPrimaryIndexFlag(!upToDateFlag);
+        markBooksPrimaryIndexFlag('0');
     }
 
     void addBookToSecondaryIndexFile(Book book) {}
@@ -498,7 +484,8 @@ public:
     void deleteFromBooksPrimaryIndexFile(int ISBN)
     {
         booksPrimaryIndex.erase(ISBN);
-        markBooksPrimaryIndexFlag(!upToDateFlag);
+        // Update the status of the file to be NOT up to date, to save it to the disk afterward
+        markBooksPrimaryIndexFlag('0');
     }
 
     long long getBookAuthorIdAt(short startOffset)
@@ -614,8 +601,8 @@ public:
             // create the file
             authorsPrimIdx.open(authorsPrimaryIndexFile, ios::out | ios::binary);
             // write the header
-            short flag = upToDateFlag;
-            authorsPrimIdx.write((char *)&flag, sizeof(flag));
+            char flag = '1';
+            authorsPrimIdx.write((char *)&flag, sizeof(char));
             authorsPrimIdx.close();
         }
 
@@ -626,16 +613,21 @@ public:
             // create the file
             booksPrimIdx.open(booksPrimaryIndexFile, ios::out | ios::binary);
             // write the header
-            short flag = upToDateFlag;
-            booksPrimIdx.write((char *)&flag, sizeof(flag));
+            char flag = '1';
+            booksPrimIdx.write((char *)&flag, sizeof(char));
             booksPrimIdx.close();
         }
     }
 
-    void markBooksPrimaryIndexFlag(short value)
+    // Update the status flag of the books primary index file
+    void markBooksPrimaryIndexFlag(char value)
     {
-        fstream booksPrimaryFile(booksPrimaryIndexFile, ios::out | ios::binary);
-        booksPrimaryFile.write((char *)&value, sizeof(value));
+        // Open the file in multiple modes
+        fstream booksPrimaryFile(booksPrimaryIndexFile, ios::in | ios::out | ios::binary);
+
+        // Write the status flag at the beginning of the file
+        booksPrimaryFile.seekp(0, ios::beg);
+        booksPrimaryFile.write((char *)&value, sizeof(char));
         booksPrimaryFile.close();
     }
 
@@ -646,10 +638,15 @@ public:
         booksSecondaryFile.close();
     }
 
-    void markAuthorsPrimaryIndexFlag(short value)
+    // Update the status flag of the authors primary index file
+    void markAuthorsPrimaryIndexFlag(char value)
     {
-        fstream authorsPrimaryFile(authorsPrimaryIndexFile, ios::out | ios::binary);
-        authorsPrimaryFile.write((char *)&value, sizeof(value));
+        // Open the file in multiple modes
+        fstream authorsPrimaryFile(authorsPrimaryIndexFile, ios::in | ios::out | ios::binary);
+
+        // Write the status flag at the beginning of the file
+        authorsPrimaryFile.seekp(0, ios::beg);
+        authorsPrimaryFile.write((char *)&value, sizeof(char));
         authorsPrimaryFile.close();
     }
 
@@ -660,10 +657,12 @@ public:
         authorsSecondaryFile.close();
     }
 
+    // Convert array of characters into long long data type
     long long convertCharArrToLongLong(char arr[])
     {
         long long num = 0;
-        for (int i = 0; arr[i] != '\0'; i++)
+        // Loop over the length of the array or until the length delimiter
+        for (int i = 0; arr[i] != '\0' && arr[i] != lengthDelimiter; i++)
         {
             num *= 10;
             num += (arr[i] - '0');
