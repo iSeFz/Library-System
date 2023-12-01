@@ -65,6 +65,8 @@ public:
             // Read the value of author id
             char authorID[15];
             authors.read((char *)&authorID, sizeof(authorID));
+
+            // Convert the authorID from character array into long long
             long long tempID = convertCharArrToLongLong(authorID);
 
             // Jump to the next record, minus 17 to compensate the read of the record size itself (2 bytes)
@@ -107,8 +109,8 @@ public:
         // Update the index file by rewriting it back to disk after inserting into the map
         for (auto record : authorsPrimaryIndex)
         {
-            authorPrimIdx.write((char *)&record.first, sizeof(int));    // Write the authorID
-            authorPrimIdx.write((char *)&record.second, sizeof(short)); // Write the byte offset
+            authorPrimIdx.write((char *)&record.first, sizeof(long long)); // Write the authorID
+            authorPrimIdx.write((char *)&record.second, sizeof(short));    // Write the byte offset
         }
 
         // Update the file status to be up to date, by setting isAuthorPrimIdxUpToDate to 1
@@ -144,9 +146,9 @@ public:
         { // If reached the end of file, exit
             if (authorPrimIdx.tellg() == endOffset)
                 break;
-            int tempID;
+            long long tempID;
             short tempOffset;
-            authorPrimIdx.read((char *)&tempID, sizeof(int));
+            authorPrimIdx.read((char *)&tempID, sizeof(long long));
             authorPrimIdx.read((char *)&tempOffset, sizeof(short));
             // Insert the record into the map to be sorted in memory by the author id
             authorsPrimaryIndex.insert({tempID, tempOffset});
@@ -213,6 +215,7 @@ public:
     // Add the new author to the primary index file
     void addAuthorToPrimaryIndexFile(char authorID[], short byteOffest)
     {
+        // Convert the authorID from character array into
         long long authID = convertCharArrToLongLong(authorID);
 
         // Insert the new record into the map to be automatically sorted by authorID
@@ -257,10 +260,9 @@ public:
                 books.seekg(recordOffset + recordSize, ios::beg);   // jump to the next record
                 continue;
             }
-            else
-            {
+            else // Return the cursor back one character that was read
                 books.seekg(-1, ios::cur);
-            }
+
             // Read the record size to be able to jump to the end of the record
             short recordSize;
             books.read((char *)&recordSize, sizeof(short));
@@ -268,10 +270,13 @@ public:
             short tempOffset = books.tellg();
             if (tempOffset == -1) // If the file has no records, just the header
                 break;
+
             // Read the value of book isbn
             char ISBN[15];
             books.read((char *)&ISBN, sizeof(ISBN));
-            int tempISBN = convertCharArrToLongLong(ISBN);
+
+            // Convert the ISBN from character array into long long
+            long long tempISBN = convertCharArrToLongLong(ISBN);
 
             // Jump to the next record, minus 17 to compensate the read of the record size itself (2 bytes)
             // And the rest (15 bytes) to compensate the dummy read of ISBN character array
@@ -281,6 +286,7 @@ public:
         }
         books.close();
 
+        // Write the status flag at the beginning of the file
         markBooksPrimaryIndexFlag(!upToDateFlag);
         // Save the index file to disk
         saveBookPrimaryIndex();
@@ -305,12 +311,12 @@ public:
         // Update the index file by rewriting it back to disk after inserting into the map
         for (auto record : booksPrimaryIndex)
         {
-            bookPrimIdx.write((char *)&record.first, sizeof(int));    // Write the ISBN
-            bookPrimIdx.write((char *)&record.second, sizeof(short)); // Write the byte offset
+            bookPrimIdx.write((char *)&record.first, sizeof(long long)); // Write the ISBN
+            bookPrimIdx.write((char *)&record.second, sizeof(short));    // Write the byte offset
         }
-
         bookPrimIdx.close();
 
+        // Update the file status to be up to date
         markBooksPrimaryIndexFlag(upToDateFlag);
     }
 
@@ -341,9 +347,9 @@ public:
         { // If reached the end of file, exit
             if (bookPrimIdx.tellg() == endOffset)
                 break;
-            int tempISBN;
+            long long tempISBN;
             short tempOffset;
-            bookPrimIdx.read((char *)&tempISBN, sizeof(int));
+            bookPrimIdx.read((char *)&tempISBN, sizeof(long long));
             bookPrimIdx.read((char *)&tempOffset, sizeof(short));
             // Insert the record into the map to be sorted in memory by the book isbn
             booksPrimaryIndex.insert({tempISBN, tempOffset});
@@ -410,9 +416,13 @@ public:
     // Add the new book to the primary index file
     void addBookToPrimaryIndexFile(char ISBN[], short byteOffest)
     {
+        // Convert the ISBN from character array into long long
         long long bookISBN = convertCharArrToLongLong(ISBN);
+
         // Insert the new record into the map to be automatically sorted by ISBN
         booksPrimaryIndex.insert({bookISBN, byteOffest});
+
+        // Update the status of the file to be NOT up to date, to save it to the disk afterward
         markBooksPrimaryIndexFlag(!upToDateFlag);
     }
 
@@ -541,7 +551,6 @@ public:
         int ISBN;
         cout << "Enter Book ISBN: ";
         cin >> ISBN;
-        cin.ignore(); // To keep input stream clean
         auto isbn = booksPrimaryIndex.lower_bound(ISBN);
         if (isbn != booksPrimaryIndex.end() && isbn->first == ISBN)
         {
