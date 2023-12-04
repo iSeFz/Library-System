@@ -306,6 +306,34 @@ public:
         markBooksPrimaryIndexFlag('1');
     }
 
+    // Retrieve data from the map & write it back to the physical file on disk
+    void saveBookSecondaryIndex()
+    {
+        // Open the file in multiple modes
+        fstream booksSecondaryIndexFstream(booksSecondaryIndexFile, ios::in | ios::out | ios::binary);
+
+        // Read the status flag
+        char isBookSecondaryIdxUpToDate;
+        booksSecondaryIndexFstream.seekg(0, ios::beg);
+        booksSecondaryIndexFstream.read((char *)&isBookSecondaryIdxUpToDate, sizeof(char));
+
+        // If the file is already up to date, do not write & exit
+        if (isBookSecondaryIdxUpToDate == '1')
+            return;
+
+        // Otherwise if the file is not up to date OR it is the first time to save it, write it to disk
+        // Update the index file by rewriting it back to disk after inserting into the map
+        for (auto record : booksSecondaryIndex)
+        {
+            booksSecondaryIndexFstream.write((char *)&record.first, sizeof(long long)); // Write the author ID
+            booksSecondaryIndexFstream.write((char *)&record.second, sizeof(short));    // Write the first record pointer (RRN) in the inverted list file
+        }
+        booksSecondaryIndexFstream.close();
+
+        // Update the file status to be up to date
+        markBooksSecondaryIndexFlag('1');
+    }
+
     // Load books primary index file into memory
     void loadBookPrimaryIndex()
     {
@@ -341,6 +369,45 @@ public:
             booksPrimaryIndex.insert({tempISBN, tempOffset});
         }
         bookPrimIdx.close();
+    }
+
+    // Load books secondary index file into memory
+    void loadBookSecondaryIndex()
+    {
+        // Open the index file in input mode
+        fstream booksSecondaryIndexFileFstream(booksSecondaryIndexFile, ios::in | ios::binary);
+
+        // Get the file size, store its offset in endOffset
+        booksSecondaryIndexFileFstream.seekg(0, ios::end);
+        short endOffset = booksSecondaryIndexFileFstream.tellg();
+
+        // Check the status field
+        char isBookPrimIdxUpToDate;
+        booksSecondaryIndexFileFstream.seekg(0, ios::beg);
+        booksSecondaryIndexFileFstream.read((char *)&isBookPrimIdxUpToDate, sizeof(char));
+
+        // If the file is outdated, recreate it
+        if (isBookPrimIdxUpToDate != '1')
+        {
+            booksSecondaryIndexFileFstream.seekp(0, ios::beg);
+            char updatedSymbol = '0';
+            booksSecondaryIndexFileFstream.write((char *)&updatedSymbol, sizeof(char));
+            return;
+        }
+
+        // Insert all records into the books primary index map
+        while (booksSecondaryIndexFileFstream)
+        { // If reached the end of file, exit
+            if (booksSecondaryIndexFileFstream.tellg() == endOffset)
+                break;
+            long long tempAuthorId;
+            short tempRecordPointer;
+            booksSecondaryIndexFileFstream.read((char *)&tempAuthorId, sizeof(long long));
+            booksSecondaryIndexFileFstream.read((char *)&tempRecordPointer, sizeof(short));
+            // Insert the record into the map to be sorted in memory by the book isbn
+            booksSecondaryIndex.insert({tempAuthorId, tempRecordPointer});
+        }
+        booksSecondaryIndexFileFstream.close();
     }
 
     // Add a new book helper function
@@ -394,6 +461,7 @@ public:
             books.write((char *)&lengthDelimiter, 1);
             // Add the new book to the primary index file
             addBookToPrimaryIndexFile(book.ISBN, offset);
+            addBookToSecondaryIndexFile(book);
             cout << "\tNew Book Added Successfully!\n";
             books.close();
         }
@@ -412,9 +480,76 @@ public:
         markBooksPrimaryIndexFlag('0');
     }
 
-    void addBookToSecondaryIndexFile(Book book) {}
+    void addBookToSecondaryIndexFile(Book book)
+    {
+        long long authorId = convertCharArrToLongLong(book.authorID);
+        long long ISBN = convertCharArrToLongLong(book.ISBN);
 
-    void addBookToSecondaryIndexLinkedListFile(Book book) {}
+        if (booksSecondaryIndex.count(authorId) == 0)
+        {
+            cout << "Empty list\n";
+            booksSecondaryIndex[authorId] = addToInvertedList(ISBN, -1); // RRN
+            cout << "Added value: " << booksSecondaryIndex[authorId] << "\n";
+        }
+        else
+        {
+            booksSecondaryIndex[authorId] = addToInvertedList(ISBN, booksSecondaryIndex[authorId]);
+        }
+        // Update the status of the file to be NOT up to date, to save it to the disk afterward
+        markBooksSecondaryIndexFlag('0');
+    }
+
+    short addToInvertedList(long long ISBN, short nextRecordPointer)
+    {
+        // Open the file in multiple modes
+        fstream invertedList(booksSecondaryIndexLinkedListFile, ios::app | ios::binary);
+
+        short bestOffset = getBestOffsetInInvertedList();
+        cout << "Best palce to insert: " << bestOffset << "\n";
+        invertedList.seekp(bestOffset, ios::beg);
+        if (invertedList.fail())
+        {
+            cout << "Failed to open the file.\n";
+            return -1; // or handle the error appropriately
+        }
+        cout << "Writing to the inverted list file......\n";
+        cout << "ISBN = " << ISBN << "\n";
+        cout << "nextRecordPointer = " << nextRecordPointer << "\n";
+        // Write the ISBN & the next record pointer
+        invertedList.write((char *)&ISBN, sizeof(long long));
+        invertedList.write((char *)&nextRecordPointer, sizeof(short));
+
+        invertedList.close();
+
+        // Return the RRN of the new record
+        return bestOffset / (sizeof(long long) + sizeof(short)); // RRN
+    }
+
+    short getBestOffsetInInvertedList()
+    {
+        fstream invertedList(booksSecondaryIndexLinkedListFile, ios::in | ios::binary);
+
+        invertedList.seekg(0, ios::end);
+        int endOffset = invertedList.tellg();
+        invertedList.seekg(0, ios::beg);
+
+        while (invertedList)
+        {
+            long long ISBN;
+            invertedList.read((char *)&ISBN, sizeof(long long));
+            short nextRecordPointer;
+            invertedList.read((char *)&nextRecordPointer, sizeof(short));
+            if (nextRecordPointer == '#')
+            {
+                int returned = invertedList.tellg() - (sizeof(long long) + sizeof(short));
+                invertedList.close();
+                return returned;
+            }
+        }
+
+        invertedList.close();
+        return endOffset;
+    }
 
     // Update author name using author ID
     void updateAuthorName() {}
@@ -517,7 +652,7 @@ public:
         short previousRecordOffset = -1;
 
         fstream invertedList(booksSecondaryIndexLinkedListFile, ios::in | ios::out | ios::binary);
-        short flagLength = 1;
+        char flagLength = 1;
         short deletedSymbol = '#';
 
         // Size of each record in the linked list is the ISBN + the next record pointer
@@ -755,6 +890,18 @@ public:
             authorsPrimIdx.close();
         }
 
+        fstream authorsSeondaryIndexFileFstream(authorsSecondaryIndexFile, ios::in | ios::binary);
+        // check if the file exists
+        if (!authorsSeondaryIndexFileFstream)
+        {
+            // create the file
+            authorsSeondaryIndexFileFstream.open(authorsSecondaryIndexFile, ios::out | ios::binary);
+            // write the header
+            char flag = '1';
+            authorsSeondaryIndexFileFstream.write((char *)&flag, sizeof(char));
+            authorsSeondaryIndexFileFstream.close();
+        }
+
         fstream booksPrimIdx(booksPrimaryIndexFile, ios::in | ios::binary);
         // check if the file exists
         if (!booksPrimIdx)
@@ -765,6 +912,27 @@ public:
             char flag = '1';
             booksPrimIdx.write((char *)&flag, sizeof(char));
             booksPrimIdx.close();
+        }
+
+        fstream booksSecondaryIndexFileFstream(booksSecondaryIndexFile, ios::in | ios::binary);
+        // check if the file exists
+        if (!booksSecondaryIndexFileFstream)
+        {
+            // create the file
+            booksSecondaryIndexFileFstream.open(booksSecondaryIndexFile, ios::out | ios::binary);
+            // write the header
+            char flag = '1';
+            booksSecondaryIndexFileFstream.write((char *)&flag, sizeof(char));
+            booksSecondaryIndexFileFstream.close();
+        }
+
+        fstream booksInvertedList(booksSecondaryIndexLinkedListFile, ios::in | ios::binary);
+        // check if the file exists
+        if (!booksInvertedList)
+        {
+            // create the file
+            booksInvertedList.open(booksSecondaryIndexLinkedListFile, ios::out | ios::binary);
+            booksInvertedList.close();
         }
     }
 
@@ -778,6 +946,17 @@ public:
         booksPrimaryFile.seekp(0, ios::beg);
         booksPrimaryFile.write((char *)&value, sizeof(char));
         booksPrimaryFile.close();
+    }
+
+    void markBooksSecondaryIndexFlag(char value)
+    {
+        // Open the file in multiple modes
+        fstream booksSecondaryIndexFstream(booksSecondaryIndexFile, ios::in | ios::out | ios::binary);
+
+        // Write the status flag at the beginning of the file
+        booksSecondaryIndexFstream.seekp(0, ios::beg);
+        booksSecondaryIndexFstream.write((char *)&value, sizeof(char));
+        booksSecondaryIndexFstream.close();
     }
 
     void markBooksSecondaryIndexFlag(short value)
@@ -964,14 +1143,34 @@ public:
         }
     }
 
+    void printBooksInvertedList()
+    {
+        fstream invertedFile(booksSecondaryIndexLinkedListFile, ios::in | ios::binary);
+        invertedFile.seekg(0, ios::end);
+        int endOffset = invertedFile.tellg();
+        invertedFile.seekg(0, ios::beg);
+
+        while (invertedFile)
+        {
+            if (invertedFile.tellg() == endOffset)
+                break;
+            long long ISBN;
+            invertedFile.read((char *)&ISBN, sizeof(long long));
+            short nextRecordPointer;
+            invertedFile.read((char *)&nextRecordPointer, sizeof(short));
+            cout << ISBN << " " << nextRecordPointer << "\n";
+        }
+    }
+
     // Main method to start the program
     void start()
     {
         cout << "\tWelcome to the Library Catalog System!\n";
         checkFilesExist();
         // Load index files into memory
-        loadAuthorPrimaryIndex();
+        // loadAuthorPrimaryIndex();
         loadBookPrimaryIndex();
+        loadBookSecondaryIndex();
         // Loop until user exits
         while (true)
         {
@@ -990,7 +1189,8 @@ public:
                     "13. Print Authors Primary Index\n"
                     "14. Print Books Primary Index\n"
                     "15. Print Authors Secondary Index\n"
-                    "16. Print Books Secondary Index\n";
+                    "16. Print Books Secondary Index\n"
+                    "17. Print Books Secondary Index Inverted list\n";
             cout << "Please Enter Choice (1-10) ==> ";
             string choice;
             getline(cin, choice);
@@ -1051,6 +1251,10 @@ public:
             {
                 printBooksSecondaryIndex();
             }
+            else if (choice == "17")
+            {
+                printBooksInvertedList();
+            }
             else
             {
                 cerr << "\n\tINVALID CHOICE!!\n";
@@ -1062,8 +1266,9 @@ public:
     void terminate()
     {
         // Save the primary index files to the disk with the updated indices
-        saveAuthorPrimaryIndex();
+        // saveAuthorPrimaryIndex();
         saveBookPrimaryIndex();
+        saveBookSecondaryIndex();
         cout << "\tThank you for using our Library System!\n";
     }
 };
