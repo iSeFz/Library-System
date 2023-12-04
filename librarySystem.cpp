@@ -447,8 +447,8 @@ public:
         recordSize = isbnSize + titleSize + authIdSize + 5;
 
         // If the avail list is empty, insert at the end of the file
-        if (header == -1)
-        {
+        // if (header == -1)
+        // {
             books.seekp(0, ios::end); // Seek to the end of file
             books.write((char *)&recordSize, sizeof(recordSize));
             short offset = books.tellp(); // Store the byteoffset of the new record
@@ -464,7 +464,7 @@ public:
             addBookToSecondaryIndexFile(book);
             cout << "\tNew Book Added Successfully!\n";
             books.close();
-        }
+        // }
     }
 
     // Add the new book to the primary index file
@@ -502,7 +502,7 @@ public:
     short addToInvertedList(long long ISBN, short nextRecordPointer)
     {
         // Open the file in multiple modes
-        fstream invertedList(booksSecondaryIndexLinkedListFile, ios::app | ios::binary);
+        fstream invertedList(booksSecondaryIndexLinkedListFile, ios::in | ios::out | ios::binary);
 
         short bestOffset = getBestOffsetInInvertedList();
         cout << "Best palce to insert: " << bestOffset << "\n";
@@ -585,9 +585,9 @@ public:
         if (isbn != booksPrimaryIndex.end() && isbn->first == ISBN)
         {
             short recordStartoffset = isbn->second - 2;
-            deleteFromBooksDataFile(recordStartoffset);
-            deleteFromBooksPrimaryIndexFile(ISBN);
             deleteFromBooksSecondaryIndexFile(ISBN, getBookAuthorIdAt(recordStartoffset));
+            deleteFromBooksPrimaryIndexFile(ISBN);
+            deleteFromBooksDataFile(recordStartoffset);
         }
         else
         {
@@ -625,6 +625,7 @@ public:
 
     long long getBookAuthorIdAt(short startOffset)
     {
+        cout << "delete the record at offset: " << startOffset << "\n";
         fstream books(booksFile, ios::in | ios::binary);
         Book tmpBook;
         books.seekg(startOffset, ios::beg);
@@ -632,14 +633,22 @@ public:
         books.getline(tmpBook.ISBN, 15, '|');
         books.getline(tmpBook.bookTitle, 30, '|');
         books.getline(tmpBook.authorID, 15, '|');
+        cout << "ISBN = " << convertCharArrToLongLong(tmpBook.ISBN) << "\n";
+        cout << "bookTitle = " << tmpBook.bookTitle << "\n";
+        cout << "Author ID = " << tmpBook.authorID << "\n";
         books.close();
         return convertCharArrToLongLong(tmpBook.authorID);
     }
 
     void deleteFromBooksSecondaryIndexFile(long long ISBN, long long authorId)
     {
+        cout << "Deleting from secondary index file......\n";
+        cout << "ISBN = " << ISBN << "\n";
+        cout << "authorId = " << authorId << "\n";
         short oldPointer = booksSecondaryIndex[authorId];
         short newPointer = deleteFromBooksSecondaryIndexLinkedListFile(oldPointer, ISBN);
+        cout << "oldPointer = " << oldPointer << "\n";
+        cout << "newPointer = " << newPointer << "\n";
         if (newPointer == -1)
             booksSecondaryIndex.erase(authorId);
         else
@@ -652,23 +661,27 @@ public:
         short previousRecordOffset = -1;
 
         fstream invertedList(booksSecondaryIndexLinkedListFile, ios::in | ios::out | ios::binary);
-        char flagLength = 1;
+        // char flagLength = 1;
         short deletedSymbol = '#';
 
         // Size of each record in the linked list is the ISBN + the next record pointer
         short recordSize = sizeof(long long) + sizeof(short);
 
         // Go to the first record of the linked list
-        invertedList.seekg(flagLength + firstPosition * recordSize, ios::beg);
+        invertedList.seekg(firstPosition * recordSize, ios::beg);
+        cout << "Go to the first record of the linked list: " << firstPosition * recordSize << "\n";
 
         while (true)
         {
+            // cout << "current offset: " << invertedList.tellg() << "\n";
             // Read the ISBN & the next record pointer from the current record
             long long tmpISBN;
             invertedList.read((char *)&tmpISBN, sizeof(long long));
             short nextRecordPointer;
             invertedList.read((char *)&nextRecordPointer, sizeof(short));
 
+            cout << "tmpISBN = " << tmpISBN << "\n";
+            cout << "nextRecordPointer = " << nextRecordPointer << "\n";
             if (tmpISBN == ISBN)
             {
                 // If there is no previous record, then we want to delete this first record
@@ -708,6 +721,8 @@ public:
             else
             {
                 previousRecordOffset = invertedList.tellg() - recordSize;
+                // Go to the next record
+                invertedList.seekg(nextRecordPointer * recordSize, ios::beg);
             }
         }
     }
