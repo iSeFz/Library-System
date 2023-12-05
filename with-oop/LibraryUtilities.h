@@ -169,6 +169,37 @@ public:
         }
         return num;
     }
+
+    // Insure that avail list pointers are correct after the insertion of a new record
+    static void fixAvailList(short &headerOffset, string dataFile)
+    {
+        // Open the file in multiple modes
+        fstream file(dataFile, ios::in | ios::out | ios::binary);
+
+        // Read the offset of the previous deleted record
+        short prevOffset;
+        file.seekg(headerOffset + 2, ios::beg); // Skip the two characters '*' & the length delimiter '|'
+        file.read((char *)&prevOffset, sizeof(prevOffset));
+
+        // Seek to the previous offset to check if it points correctly to the previous deleted record
+        char deleteChar;
+        file.seekg(prevOffset, ios::beg);
+        file.read((char *)&deleteChar, 1);
+        // If it does NOT point to a deleted record, modify its pointer to be -1
+        if (deleteChar != '*')
+        {
+            short newOffset = -1;
+            file.seekp(headerOffset + 2, ios::beg);
+            file.write((char *)&newOffset, sizeof(newOffset));
+        }
+        else // Otherwise, check for its previous offset recursively
+        {
+            short tempOffset;
+            file.ignore(1); // Ignore the delimiter '|'
+            file.read((char *)&tempOffset, sizeof(tempOffset));
+            fixAvailList(tempOffset, dataFile);
+        }
+    }
 };
 
 const string LibraryUtilities::authorsFile = "authors.txt"; // Authors data file

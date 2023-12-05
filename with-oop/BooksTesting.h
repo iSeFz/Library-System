@@ -68,6 +68,7 @@ public:
             cout << "Book Title: " << book.bookTitle << " - ";
             cout << "Author ID: " << book.authorID << "\n";
             cout << "############################\n";
+            books.seekg(recordOffset + recordSize, ios::beg);   // jump to the next record
         }
         books.close();
     }
