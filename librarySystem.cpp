@@ -449,21 +449,21 @@ public:
         // If the avail list is empty, insert at the end of the file
         // if (header == -1)
         // {
-            books.seekp(0, ios::end); // Seek to the end of file
-            books.write((char *)&recordSize, sizeof(recordSize));
-            short offset = books.tellp(); // Store the byteoffset of the new record
-            // Write the rest of record fields separated by delimeters
-            books.write(book.ISBN, isbnSize);
-            books.write((char *)&lengthDelimiter, 1);
-            books.write(book.bookTitle, titleSize);
-            books.write((char *)&lengthDelimiter, 1);
-            books.write(book.authorID, authIdSize);
-            books.write((char *)&lengthDelimiter, 1);
-            // Add the new book to the primary index file
-            addBookToPrimaryIndexFile(book.ISBN, offset);
-            addBookToSecondaryIndexFile(book);
-            cout << "\tNew Book Added Successfully!\n";
-            books.close();
+        books.seekp(0, ios::end); // Seek to the end of file
+        books.write((char *)&recordSize, sizeof(recordSize));
+        short offset = books.tellp(); // Store the byteoffset of the new record
+        // Write the rest of record fields separated by delimeters
+        books.write(book.ISBN, isbnSize);
+        books.write((char *)&lengthDelimiter, 1);
+        books.write(book.bookTitle, titleSize);
+        books.write((char *)&lengthDelimiter, 1);
+        books.write(book.authorID, authIdSize);
+        books.write((char *)&lengthDelimiter, 1);
+        // Add the new book to the primary index file
+        addBookToPrimaryIndexFile(book.ISBN, offset);
+        addBookToSecondaryIndexFile(book);
+        cout << "\tNew Book Added Successfully!\n";
+        books.close();
         // }
     }
 
@@ -559,7 +559,8 @@ public:
     void updateAuthorNameInSecondaryIndex(char oldAuthorName[30], char newAuthorName[30]) {}
 
     // Update book title using ISBN
-    void updateBookTitle() {
+    void updateBookTitle()
+    {
         int ISBN;
         int offset;
         char newTitle[30];
@@ -571,52 +572,54 @@ public:
 
         // searching for the record which will be updated in runtime
         auto isbn = booksPrimaryIndex.lower_bound(ISBN);
-        if (isbn != booksPrimaryIndex.end() && isbn->first == ISBN) {
+        if (isbn != booksPrimaryIndex.end() && isbn->first == ISBN)
+        {
             offset = isbn->second;
-            updateBookTitleInDataFile(newTitle,offset);
+            updateBookTitleInDataFile(newTitle, offset);
         }
     }
 
-    //applying the updates in the books data file
-    void updateBookTitleInDataFile(char newBookTitle[30], int byteOffset) {
-        fstream dataFile(booksFile, ios::in | ios::out|ios::binary);
+    // applying the updates in the books data file
+    void updateBookTitleInDataFile(char newBookTitle[30], int byteOffset)
+    {
+        fstream dataFile(booksFile, ios::in | ios::out | ios::binary);
         // reaching desired record
         dataFile.seekg(byteOffset, ios::beg);
         // skipping the length indicator(2 bytes) and ISBN field(15 bytes or finding |)
-        dataFile.ignore(17,'|');
+        dataFile.ignore(17, '|');
 
         // storing the length of the old title (before updating) to not exceed the allocated size
         char oldTitle[30];
         dataFile.getline(oldTitle, 30, '|');
-        int maxSize= strlen(oldTitle);
+        int maxSize = strlen(oldTitle);
 
         // reaching the title field beginning
-        dataFile.seekg(-(maxSize+1),ios::cur);
+        dataFile.seekg(-(maxSize + 1), ios::cur);
 
         // case 1 --> length of new title > length of old title
-        if (strlen(newBookTitle)>maxSize) {
+        if (strlen(newBookTitle) > maxSize)
+        {
             newBookTitle[maxSize] = '\0';
             dataFile.write(newBookTitle, maxSize);
-            
         }
         // case 2 --> length of new title < length of old title
-        else if (strlen(newBookTitle)<maxSize) {
-            for(int i=strlen(newBookTitle); i < maxSize; i++){
-                newBookTitle[i]='_';
+        else if (strlen(newBookTitle) < maxSize)
+        {
+            for (int i = strlen(newBookTitle); i < maxSize; i++)
+            {
+                newBookTitle[i] = '_';
             }
             dataFile.write(newBookTitle, maxSize);
-
         }
         // case 3 --> length of new title == length of old title
-        else{
-            dataFile.write(newBookTitle,maxSize);
+        else
+        {
+            dataFile.write(newBookTitle, maxSize);
         }
 
         dataFile.close();
         cout << "\tBook title is updated successfully\n";
-
     }
-
 
     // Delete an author using author ID
     void deleteAuthor() {}
@@ -680,7 +683,6 @@ public:
 
     long long getBookAuthorIdAt(short startOffset)
     {
-        cout << "delete the record at offset: " << startOffset << "\n";
         fstream books(booksFile, ios::in | ios::binary);
         Book tmpBook;
         books.seekg(startOffset, ios::beg);
@@ -688,22 +690,14 @@ public:
         books.getline(tmpBook.ISBN, 15, '|');
         books.getline(tmpBook.bookTitle, 30, '|');
         books.getline(tmpBook.authorID, 15, '|');
-        cout << "ISBN = " << convertCharArrToLongLong(tmpBook.ISBN) << "\n";
-        cout << "bookTitle = " << tmpBook.bookTitle << "\n";
-        cout << "Author ID = " << tmpBook.authorID << "\n";
         books.close();
         return convertCharArrToLongLong(tmpBook.authorID);
     }
 
     void deleteFromBooksSecondaryIndexFile(long long ISBN, long long authorId)
     {
-        cout << "Deleting from secondary index file......\n";
-        cout << "ISBN = " << ISBN << "\n";
-        cout << "authorId = " << authorId << "\n";
         short oldPointer = booksSecondaryIndex[authorId];
         short newPointer = deleteFromBooksSecondaryIndexLinkedListFile(oldPointer, ISBN);
-        cout << "oldPointer = " << oldPointer << "\n";
-        cout << "newPointer = " << newPointer << "\n";
         if (newPointer == -1)
             booksSecondaryIndex.erase(authorId);
         else
@@ -724,7 +718,6 @@ public:
 
         // Go to the first record of the linked list
         invertedList.seekg(firstPosition * recordSize, ios::beg);
-        cout << "Go to the first record of the linked list: " << firstPosition * recordSize << "\n";
 
         while (true)
         {
@@ -735,8 +728,6 @@ public:
             short nextRecordPointer;
             invertedList.read((char *)&nextRecordPointer, sizeof(short));
 
-            cout << "tmpISBN = " << tmpISBN << "\n";
-            cout << "nextRecordPointer = " << nextRecordPointer << "\n";
             if (tmpISBN == ISBN)
             {
                 // If there is no previous record, then we want to delete this first record
