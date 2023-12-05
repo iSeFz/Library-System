@@ -78,4 +78,9 @@ public:
     {
         authorsTesting.printAuthorsSecondaryIndex(authorsSecondaryIndex);
     }
+
+    map<long long, short> &getPrimaryIndex()
+    {
+        return authorsPrimaryIndex;
+    }
 };

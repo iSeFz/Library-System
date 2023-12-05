@@ -10,16 +10,38 @@ class BooksAdding
 {
 public:
     // Add a new book helper function
-    void addBook(map<long long, short> &booksPrimaryIndex, map<long long, short> &booksSecondaryIndex)
+    void addBook(map<long long, short> &booksPrimaryIndex, map<long long, short> &booksSecondaryIndex, map<long long, short> &authorsPrimaryIndex)
     {
         // Get book data from the user & store it in a Book object
         Book newBook;
-        cout << "Enter book ISBN: ";
-        cin.getline(newBook.ISBN, 15);
+        while (true)
+        { // Check for the ISBN to verify that it is unique
+            cout << "Enter book ISBN: ";
+            cin.getline(newBook.ISBN, 15);
+            short isbn = LibraryUtilities::convertCharArrToLongLong(newBook.ISBN);
+            // Search for the given ISBN
+            auto result = booksPrimaryIndex.lower_bound(isbn);
+            // If the isbn is found, print a warning message indicating that it is a duplicate
+            if (result != booksPrimaryIndex.end() && result->first == isbn)
+                cerr << "\tA Book with the same ISBN already exists\n";
+            else // Otherwise, break the loop & continue data entry
+                break;
+        }
         cout << "Enter book title: ";
         cin.getline(newBook.bookTitle, 30);
-        cout << "Enter author ID: ";
-        cin.getline(newBook.authorID, 15);
+        while (true)
+        { // Check for the author id to verify that it exists
+            cout << "Enter author ID: ";
+            cin.getline(newBook.authorID, 15);
+            short authID = LibraryUtilities::convertCharArrToLongLong(newBook.authorID);
+            // Search for the given author id
+            auto result = authorsPrimaryIndex.lower_bound(authID);
+            // If the id is found, break the loop & continue data entry
+            if (result != authorsPrimaryIndex.end() && result->first == authID)
+                break;
+            // Otherwise, print a warning message indicating that it is not found
+            cerr << "\tAuthor with ID#" << authID << " is NOT found!\n";
+        }
         // Add the new book to the data file
         addBookToDataFile(newBook, booksPrimaryIndex, booksSecondaryIndex);
     }

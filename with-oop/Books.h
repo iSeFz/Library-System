@@ -52,9 +52,9 @@ public:
     }
 
     // Add a new book helper function
-    void addBook()
+    void addBook(map<long long, short> &authorsPrimaryIndex)
     {
-        booksAdding.addBook(booksPrimaryIndex, booksSecondaryIndex);
+        booksAdding.addBook(booksPrimaryIndex, booksSecondaryIndex, authorsPrimaryIndex);
     }
 
     // Update book title using ISBN

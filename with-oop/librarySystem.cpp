@@ -54,7 +54,7 @@ public:
             else if (choice == "2")
             {
                 cout << "\tAdding New Book\n";
-                books.addBook();
+                books.addBook(authors.getPrimaryIndex());
             }
             else if (choice == "4")
             {
