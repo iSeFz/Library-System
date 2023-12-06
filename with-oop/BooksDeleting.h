@@ -50,7 +50,7 @@ public:
         books.close();
     }
 
-    void deleteFromBooksPrimaryIndexFile(map<long long, short> &booksPrimaryIndex, int ISBN)
+    void deleteFromBooksPrimaryIndexFile(map<long long, short> &booksPrimaryIndex, long long ISBN)
     {
         booksPrimaryIndex.erase(ISBN);
         // Update the status of the file to be NOT up to date, to save it to the disk afterward

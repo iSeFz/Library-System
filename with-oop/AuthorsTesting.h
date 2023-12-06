@@ -46,7 +46,7 @@ public:
         }
     }
 
-    void printAuthorsSecondaryIndex(map<char[30], short> &authorsSecondaryIndex)
+    void printAuthorsSecondaryIndex(map<string, short> &authorsSecondaryIndex)
     {
         cout << "--------------\n";
         cout << "Authors Secondary Index:\n";
