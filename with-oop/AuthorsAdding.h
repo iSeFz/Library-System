@@ -46,8 +46,8 @@ public:
         recordSize = idSize + nameSize + addSize + 5;
 
         // If the avail list is empty, insert at the end of the file
-        if (header == -1)
-        {
+        // if (header == -1)
+        // {
             authors.seekp(0, ios::end); // Seek to the end of file
             authors.write((char *)&recordSize, sizeof(recordSize));
             short offset = authors.tellp(); // Store the byteoffset of the new record
@@ -63,7 +63,7 @@ public:
             addAuthorToSecondaryIndexFile(author, authorsSecondaryIndex);
             cout << "\tNew Author Added Successfully!\n";
             authors.close();
-        }
+        // }
     }
 
     // Add the new author to the primary index file

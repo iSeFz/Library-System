@@ -140,13 +140,6 @@ public:
         booksSecondaryIndexFstream.close();
     }
 
-    static void markBooksSecondaryIndexFlag(short value)
-    {
-        fstream booksSecondaryFile(booksSecondaryIndexFile, ios::out | ios::binary);
-        booksSecondaryFile.write((char *)&value, sizeof(value));
-        booksSecondaryFile.close();
-    }
-
     // Update the status flag of the authors primary index file
     static void markAuthorsPrimaryIndexFlag(char value)
     {
@@ -161,7 +154,7 @@ public:
 
     static void markAuthorsSecondaryIndexFlag(char value)
     {
-        fstream authorsSecondaryFile(authorsSecondaryIndexFile, ios::out | ios::binary);
+        fstream authorsSecondaryFile(authorsSecondaryIndexFile, ios::in | ios::out | ios::binary);
         authorsSecondaryFile.write((char *)&value, sizeof(value));
         authorsSecondaryFile.close();
     }

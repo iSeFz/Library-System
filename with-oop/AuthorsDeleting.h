@@ -30,7 +30,7 @@ public:
         }
     }
 
-    char *getAuthorNameAt(short startOffset)
+    string getAuthorNameAt(short startOffset)
     {
         fstream authors(LibraryUtilities::authorsFile, ios::in | ios::binary);
         Author tmpAuthor;
@@ -71,7 +71,7 @@ public:
         LibraryUtilities::markAuthorsPrimaryIndexFlag('0');
     }
 
-    void deleteFromAuthorsSecondaryIndexFile(map<string, short> &authorsSecondaryIndex, long long authorId, char authorName[30])
+    void deleteFromAuthorsSecondaryIndexFile(map<string, short> &authorsSecondaryIndex, long long authorId, string authorName)
     {
         short oldPointer = authorsSecondaryIndex[authorName];
         short newPointer = deleteFromAuthorsSecondaryIndexLinkedListFile(oldPointer, authorId);
