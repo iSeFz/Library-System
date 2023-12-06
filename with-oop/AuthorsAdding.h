@@ -10,7 +10,7 @@ class AuthorsAdding
 {
 public:
     // Add a new author helper function
-    void addAuthor(map<long long, short> &authorsPrimaryIndex, map<long long, short> &authorsSecondaryIndex)
+    void addAuthor(map<long long, short> &authorsPrimaryIndex, map<char[30], short> &authorsSecondaryIndex)
     {
         // Get author data from the user & store it in an Author object
         Author newAuthor;
@@ -25,7 +25,7 @@ public:
     }
 
     // Add the new author to the main authors data file
-    void addAuthorToDataFile(Author &author, map<long long, short> &authorsPrimaryIndex, map<long long, short> &authorsSecondaryIndex)
+    void addAuthorToDataFile(Author &author, map<long long, short> &authorsPrimaryIndex, map<char[30], short> &authorsSecondaryIndex)
     {
         short header, recordSize, idSize, nameSize, addSize;
         // Open the file in multiple modes
@@ -79,7 +79,7 @@ public:
         LibraryUtilities::markAuthorsPrimaryIndexFlag('0');
     }
 
-    void addAuthorToSecondaryIndexFile(Author author, map<long long, short> &authorsSecondaryIndex) {}
+    void addAuthorToSecondaryIndexFile(Author author, map<char[30], short> &authorsSecondaryIndex) {}
 
     void addAuthorToSecondaryIndexLinkedListFile(char authorName[], short nextRecordPointer) {}
 };

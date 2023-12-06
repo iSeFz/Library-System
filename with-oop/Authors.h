@@ -18,7 +18,7 @@ class Authors
 {
 private:
     map<long long, short> authorsPrimaryIndex;   // (Author ID, byte offset) Authors primary index
-    map<long long, short> authorsSecondaryIndex; // (Author Name, First record in linked list) Authors secondary index
+    map<char[30], short> authorsSecondaryIndex; // (Author Name, First record in linked list) Authors secondary index
     AuthorsAdding authorsAdding = AuthorsAdding();
     AuthorsConfiguration authorsConfiguration = AuthorsConfiguration();
     AuthorsUpdating authorsUpdating = AuthorsUpdating();
