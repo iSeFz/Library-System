@@ -65,6 +65,10 @@ public:
             {
                 books.deleteBook();
             }
+            else if (choice == "6")
+            {
+                authors.deleteAuthor();
+            }
             else if (choice == "7")
             {
                 cout << "\tPrinting Author Using ID\n";

@@ -12,14 +12,46 @@ public:
     // For testing
     void printAuthorsFile()
     {
-        cout << "--------------\n";
+        cout << "----------------------------\n";
         fstream authors(LibraryUtilities::authorsFile, ios::in | ios::binary);
+
+        authors.seekg(0, ios::end);
+        int fileEndOffset = authors.tellg();
+        authors.seekg(0, ios::beg);
+
         short header;
         authors.read((char *)&header, sizeof(header));
-        cout << "Header: " << header << "\n";
-        while (authors.eof() == false)
+        cout << "Avail list header: " << header << "\n";
+        while (authors)
         {
-            cout << "##############\n";
+            int recordOffset = authors.tellg();
+            if (recordOffset == fileEndOffset or recordOffset == -1)
+                break;
+            cout << "\n-------- "
+                 << "Record Offset: " << recordOffset << " --------\n";
+            char firstChar;
+            authors.read((char *)&firstChar, sizeof(char));
+            // if the record is deleted
+            if (firstChar == '*')
+            {
+                short previousRecord, recordSize;
+                authors.ignore(1);                                    // ignore the delimiter
+                authors.read((char *)&previousRecord, sizeof(short)); // read the previous record
+                authors.ignore(1);                                    // ignore the delimiter
+                authors.read((char *)&recordSize, sizeof(short));     // read the record size
+                authors.seekg(recordOffset + recordSize, ios::beg);   // jump to the next record
+                cout << "%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n";
+                cout << "Redcord deleted\n";
+                cout << "Previous deleted record: " << previousRecord << "\n";
+                cout << "Record Size: " << recordSize << "\n";
+                cout << "%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n";
+                continue;
+            }
+            else
+            {
+                authors.seekg(-1, ios::cur);
+            }
+            cout << "############################\n";
             short recordSize;
             authors.read((char *)&recordSize, sizeof(short));
             if (recordSize == -1)
@@ -29,9 +61,15 @@ public:
             authors.getline(author.authorID, 15, '|');
             authors.getline(author.authorName, 30, '|');
             authors.getline(author.address, 30, '|');
-            cout << "\tAuthor #" << author.authorID << " - ";
+            if (authors.peek() == '|')
+            {
+                authors.seekg(1, ios::cur);
+            }
+            cout << "\tAuthor ID #" << author.authorID << " - ";
             cout << "Author Name: " << author.authorName << " - ";
             cout << "Author Address: " << author.address << "\n";
+            cout << "############################\n";
+            authors.seekg(recordOffset + recordSize, ios::beg);   // jump to the next record
         }
         authors.close();
     }

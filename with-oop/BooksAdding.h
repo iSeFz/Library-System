@@ -82,7 +82,7 @@ public:
             books.write((char *)&LibraryUtilities::lengthDelimiter, 1);
             // Add the new book to index files
             addBookToPrimaryIndexFile(book.ISBN, offset, booksPrimaryIndex);
-            addBookToSecondaryIndexFile(book, booksPrimaryIndex);
+            addBookToSecondaryIndexFile(book, booksSecondaryIndex);
             cout << "\tNew Book Added Successfully!\n";
             books.close();
         }
@@ -188,7 +188,7 @@ public:
             LibraryUtilities::fixAvailList(header, LibraryUtilities::booksFile);
             // Add the new book to index files
             addBookToPrimaryIndexFile(book.ISBN, offset, booksPrimaryIndex);
-            addBookToSecondaryIndexFile(book, booksPrimaryIndex);
+            addBookToSecondaryIndexFile(book, booksSecondaryIndex);
             cout << "\tNew Book Added Successfully!\n";
             books.close();
         }
