@@ -21,6 +21,7 @@ public:
         LibraryUtilities::checkFilesExist();
         // Load index files into memory
         authors.loadAuthorPrimaryIndex();
+        authors.loadAuthorsSecondaryIndex();
         books.loadBookPrimaryIndex();
         books.loadBookSecondaryIndex();
         // Loop until user exits
@@ -36,13 +37,14 @@ public:
                     "8. Print Book (ISBN)\n"
                     "9. Write Query\n"
                     "10. Exit\n"
-                    "11. Print Authors File\n"
-                    "12. Print Books File\n"
-                    "13. Print Authors Primary Index\n"
-                    "14. Print Books Primary Index\n"
-                    "15. Print Authors Secondary Index\n"
-                    "16. Print Books Secondary Index\n"
-                    "17. Print Books Secondary Index Inverted list\n";
+                    "11. Print Books File\n"
+                    "12. Print Books Primary Index\n"
+                    "13. Print Books Secondary Index\n"
+                    "14. Print Books Secondary Index Inverted list\n"
+                    "15. Print Authors File\n"
+                    "16. Print Authors Primary Index\n"
+                    "17. Print Authors Secondary Index\n"
+                    "18. Print Authors Secondary Index Inverted list\n";
             cout << "Please Enter Choice (1-10) ==> ";
             string choice;
             getline(cin, choice);
@@ -90,31 +92,35 @@ public:
             }
             else if (choice == "11")
             {
-                authors.printAuthorsFile();
+                books.printBooksFile();
             }
             else if (choice == "12")
             {
-                books.printBooksFile();
+                books.printBooksPrimaryIndex();
             }
             else if (choice == "13")
             {
-                authors.printAuthorsPrimaryIndex();
+                books.printBooksSecondaryIndex();
             }
             else if (choice == "14")
             {
-                books.printBooksPrimaryIndex();
+                books.printBooksInvertedList();
             }
             else if (choice == "15")
             {
-                authors.printAuthorsSecondaryIndex();
+                authors.printAuthorsFile();
             }
             else if (choice == "16")
             {
-                books.printBooksSecondaryIndex();
+                authors.printAuthorsPrimaryIndex();
             }
             else if (choice == "17")
             {
-                books.printBooksInvertedList();
+                authors.printAuthorsSecondaryIndex();
+            }
+            else if (choice == "18")
+            {
+                authors.printAuthorsInvertedList();
             }
             else
             {
@@ -127,9 +133,10 @@ public:
     void terminate()
     {
         // Save the primary index files to the disk with the updated indices
-        // saveAuthorPrimaryIndex();
         books.saveBookPrimaryIndex();
         books.saveBookSecondaryIndex();
+        authors.saveAuthorPrimaryIndex();
+        authors.saveAuthorsSecondaryIndex();
         cout << "\tThank you for using our Library System!\n";
     }
 };

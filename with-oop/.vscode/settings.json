@@ -60,6 +60,7 @@
     "*.ejs": "html",
     "*.tcc": "cpp",
     "fstream": "cpp",
-    "iostream": "cpp"
+    "iostream": "cpp",
+    "iosfwd": "cpp"
   }
 }

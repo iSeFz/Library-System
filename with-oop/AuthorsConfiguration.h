@@ -114,4 +114,78 @@ public:
         }
         authorPrimIdx.close();
     }
+
+    // Retrieve data from the map & write it back to the physical file on disk
+    void saveAuthorsSecondaryIndex(map<string, short> &authorsSecondaryIndex)
+    {
+        // Open the file in multiple modes
+        fstream authorsSecondaryIndexFstream(LibraryUtilities::authorsSecondaryIndexFile, ios::in | ios::out | ios::binary);
+
+        // Read the status flag
+        char isAuthorsSecondaryIdxUpToDate;
+        authorsSecondaryIndexFstream.seekg(0, ios::beg);
+        authorsSecondaryIndexFstream.read((char *)&isAuthorsSecondaryIdxUpToDate, sizeof(char));
+
+        cout << "Savvviiinnnngg seconday index of authors\n";
+
+        // If the file is already up to date, do not write & exit
+        if (isAuthorsSecondaryIdxUpToDate == '1')
+            return;
+
+        // Otherwise if the file is not up to date OR it is the first time to save it, write it to disk
+        // Update the index file by rewriting it back to disk after inserting into the map
+        authorsSecondaryIndexFstream.seekp(sizeof(char), ios::beg);
+        for (auto record : authorsSecondaryIndex)
+        {
+            cout << "New recorded is inserted\n";
+            cout << "Author name: " << record.first << endl;
+            cout << "Record pointer: " << record.second << endl;
+            cout << "The ppointer where the file is now: " << authorsSecondaryIndexFstream.tellp() << endl;
+            authorsSecondaryIndexFstream.write((char *)"Shawky", 6); // Write the author ID
+            authorsSecondaryIndexFstream.write((char *)&record.second, sizeof(short));   // Write the first record pointer (RRN) in the inverted list file
+        }
+        authorsSecondaryIndexFstream.close();
+
+        // Update the file status to be up to date
+        LibraryUtilities::markAuthorsSecondaryIndexFlag('1');
+    }
+
+    // Load authors secondary index file into memory
+    void loadAuthorsSecondaryIndex(map<string, short> &authorsSecondaryIndex)
+    {
+        // Open the index file in input mode
+        fstream authorsSecondaryIndexFileFstream(LibraryUtilities::authorsSecondaryIndexFile, ios::in | ios::binary);
+
+        // Get the file size, store its offset in endOffset
+        authorsSecondaryIndexFileFstream.seekg(0, ios::end);
+        short endOffset = authorsSecondaryIndexFileFstream.tellg();
+
+        // Check the status field
+        char isAuthorsSecondaryIdxUpToDate;
+        authorsSecondaryIndexFileFstream.seekg(0, ios::beg);
+        authorsSecondaryIndexFileFstream.read((char *)&isAuthorsSecondaryIdxUpToDate, sizeof(char));
+
+        // If the file is outdated, recreate it
+        if (isAuthorsSecondaryIdxUpToDate != '1')
+        {
+            authorsSecondaryIndexFileFstream.seekp(0, ios::beg);
+            char updatedSymbol = '0';
+            authorsSecondaryIndexFileFstream.write((char *)&updatedSymbol, sizeof(char));
+            return;
+        }
+
+        // Insert all records into the books primary index map
+        while (authorsSecondaryIndexFileFstream)
+        { // If reached the end of file, exit
+            if (authorsSecondaryIndexFileFstream.tellg() == endOffset)
+                break;
+            string tempAuthorName;
+            short tempRecordPointer;
+            authorsSecondaryIndexFileFstream.read((char *)&tempAuthorName, sizeof(char[30]));
+            authorsSecondaryIndexFileFstream.read((char *)&tempRecordPointer, sizeof(short));
+            // Insert the record into the map to be sorted in memory by the book isbn
+            authorsSecondaryIndex.insert({tempAuthorName, tempRecordPointer});
+        }
+        authorsSecondaryIndexFileFstream.close();
+    }
 };

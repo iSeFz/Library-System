@@ -17,8 +17,8 @@ using namespace std;
 class Authors
 {
 private:
-    map<long long, short> authorsPrimaryIndex;   // (Author ID, byte offset) Authors primary index
-    map<string, short> authorsSecondaryIndex; // (Author Name, First record in linked list) Authors secondary index
+    map<long long, short> authorsPrimaryIndex; // (Author ID, byte offset) Authors primary index
+    map<string, short> authorsSecondaryIndex;  // (Author Name, First record in linked list) Authors secondary index
     AuthorsAdding authorsAdding = AuthorsAdding();
     AuthorsConfiguration authorsConfiguration = AuthorsConfiguration();
     AuthorsUpdating authorsUpdating = AuthorsUpdating();
@@ -37,6 +37,16 @@ public:
     void loadAuthorPrimaryIndex()
     {
         authorsConfiguration.loadAuthorPrimaryIndex(authorsPrimaryIndex);
+    }
+
+    void loadAuthorsSecondaryIndex()
+    {
+        authorsConfiguration.loadAuthorsSecondaryIndex(authorsSecondaryIndex);
+    }
+
+    void saveAuthorsSecondaryIndex()
+    {
+        authorsConfiguration.saveAuthorsSecondaryIndex(authorsSecondaryIndex);
     }
 
     // Add a new author helper function
@@ -77,6 +87,11 @@ public:
     void printAuthorsSecondaryIndex()
     {
         authorsTesting.printAuthorsSecondaryIndex(authorsSecondaryIndex);
+    }
+
+    void printAuthorsInvertedList()
+    {
+        authorsTesting.printAuthorsInvertedList();
     }
 
     map<long long, short> &getPrimaryIndex()

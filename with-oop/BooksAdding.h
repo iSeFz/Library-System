@@ -33,7 +33,7 @@ public:
         { // Check for the author id to verify that it exists
             cout << "Enter author ID: ";
             cin.getline(newBook.authorID, 15);
-            short authID = LibraryUtilities::convertCharArrToLongLong(newBook.authorID);
+            long long authID = LibraryUtilities::convertCharArrToLongLong(newBook.authorID);
             // Search for the given author id
             auto result = authorsPrimaryIndex.lower_bound(authID);
             // If the id is found, break the loop & continue data entry
@@ -232,6 +232,11 @@ public:
         fstream invertedList(LibraryUtilities::booksSecondaryIndexLinkedListFile, ios::in | ios::out | ios::binary);
 
         short bestOffset = getBestOffsetInInvertedList();
+        if (invertedList.fail())
+        {
+            cout << "First failing...............\n";
+            return -1; // or handle the error appropriately
+        }
         cout << "Best palce to insert: " << bestOffset << "\n";
         invertedList.seekp(bestOffset, ios::beg);
         if (invertedList.fail())
@@ -275,6 +280,6 @@ public:
         }
 
         invertedList.close();
-        return endOffset;
+        return max(0, endOffset);
     }
 };

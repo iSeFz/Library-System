@@ -74,6 +74,15 @@ public:
             authorsSeondaryIndexFileFstream.close();
         }
 
+        fstream authorsInvertedList(authorsSecondaryIndexLinkedListFile, ios::in | ios::binary);
+        // check if the file exists
+        if (!authorsInvertedList)
+        {
+            // create the file
+            authorsInvertedList.open(authorsSecondaryIndexLinkedListFile, ios::out | ios::binary);
+            authorsInvertedList.close();
+        }
+
         fstream booksPrimIdx(booksPrimaryIndexFile, ios::in | ios::binary);
         // check if the file exists
         if (!booksPrimIdx)

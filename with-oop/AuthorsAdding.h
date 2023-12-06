@@ -79,7 +79,73 @@ public:
         LibraryUtilities::markAuthorsPrimaryIndexFlag('0');
     }
 
-    void addAuthorToSecondaryIndexFile(Author author, map<string, short> &authorsSecondaryIndex) {}
+    void addAuthorToSecondaryIndexFile(Author author, map<string, short> &authorsSecondaryIndex)
+    {
+        long long authorId = LibraryUtilities::convertCharArrToLongLong(author.authorID);
 
-    void addAuthorToSecondaryIndexLinkedListFile(char authorName[], short nextRecordPointer) {}
+        if (authorsSecondaryIndex.count(author.authorName) == 0)
+        {
+            cout << "Empty list\n";
+            authorsSecondaryIndex[author.authorName] = addToInvertedList(authorId, -1); // RRN
+            cout << "Added value: " << authorsSecondaryIndex[author.authorName] << "\n";
+        }
+        else
+        {
+            authorsSecondaryIndex[author.authorName] = addToInvertedList(authorId, authorsSecondaryIndex[author.authorName]);
+        }
+        // Update the status of the file to be NOT up to date, to save it to the disk afterward
+        LibraryUtilities::markAuthorsSecondaryIndexFlag('0');
+    }
+
+    short addToInvertedList(long long authorId, short nextRecordPointer)
+    {
+        // Open the file in multiple modes
+        fstream invertedList(LibraryUtilities::authorsSecondaryIndexLinkedListFile, ios::in | ios::out | ios::binary);
+
+        short bestOffset = getBestOffsetInInvertedList();
+        cout << "Best palce to insert: " << bestOffset << "\n";
+        invertedList.seekp(bestOffset, ios::beg);
+        if (invertedList.fail())
+        {
+            cout << "Failed to open the file.\n";
+            return -1; // or handle the error appropriately
+        }
+        cout << "Writing to the inverted list file......\n";
+        cout << "Author ID = " << authorId << "\n";
+        cout << "nextRecordPointer = " << nextRecordPointer << "\n";
+        // Write the Author ID & the next record pointer
+        invertedList.write((char *)&authorId, sizeof(long long));
+        invertedList.write((char *)&nextRecordPointer, sizeof(short));
+
+        invertedList.close();
+
+        // Return the RRN of the new record
+        return bestOffset / (sizeof(long long) + sizeof(short)); // RRN
+    }
+
+    short getBestOffsetInInvertedList()
+    {
+        fstream invertedList(LibraryUtilities::authorsSecondaryIndexLinkedListFile, ios::in | ios::binary);
+
+        invertedList.seekg(0, ios::end);
+        int endOffset = invertedList.tellg();
+        invertedList.seekg(0, ios::beg);
+
+        while (invertedList)
+        {
+            long long ISBN;
+            invertedList.read((char *)&ISBN, sizeof(long long));
+            short nextRecordPointer;
+            invertedList.read((char *)&nextRecordPointer, sizeof(short));
+            if (nextRecordPointer == '#')
+            {
+                int returned = invertedList.tellg() - (sizeof(long long) + sizeof(short));
+                invertedList.close();
+                return returned;
+            }
+        }
+
+        invertedList.close();
+        return max(0, endOffset);
+    }
 };

@@ -93,4 +93,24 @@ public:
             cout << record.first << " " << record.second << "\n";
         }
     }
+
+    void printAuthorsInvertedList()
+    {
+        fstream invertedFile(LibraryUtilities::authorsSecondaryIndexLinkedListFile, ios::in | ios::binary);
+        invertedFile.seekg(0, ios::end);
+        int endOffset = invertedFile.tellg();
+        invertedFile.seekg(0, ios::beg);
+
+        while (invertedFile)
+        {
+            if (invertedFile.tellg() == endOffset)
+                break;
+            long long authorId;
+            invertedFile.read((char *)&authorId, sizeof(long long));
+            short nextRecordPointer;
+            invertedFile.read((char *)&nextRecordPointer, sizeof(short));
+            cout << authorId << " " << nextRecordPointer << "\n";
+        }
+    }
+
 };
