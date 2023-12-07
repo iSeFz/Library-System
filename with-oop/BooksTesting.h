@@ -1,8 +1,6 @@
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <map>
-#include <cstring>
+#ifndef BOOKS_TESTING_H
+#define BOOKS_TESTING_H
+
 #include "LibraryUtilities.h"
 #include "Book.h"
 
@@ -127,3 +125,5 @@ public:
         }
     }
 };
+
+#endif // BOOKS_TESTING_H

@@ -1,8 +1,6 @@
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <map>
-#include <cstring>
+#ifndef AUTHORS_TESTING_H
+#define AUTHORS_TESTING_H
+
 #include "LibraryUtilities.h"
 #include "Author.h"
 
@@ -112,5 +110,6 @@ public:
             cout << authorId << " " << nextRecordPointer << "\n";
         }
     }
-
 };
+
+#endif // AUTHORS_TESTING_H
