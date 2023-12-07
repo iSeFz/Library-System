@@ -152,9 +152,14 @@ public:
         authorsPrimaryFile.close();
     }
 
+    // Update the status flag of the authors secondary index file
     static void markAuthorsSecondaryIndexFlag(char value)
     {
+        // Open the file in multiple modes
         fstream authorsSecondaryFile(authorsSecondaryIndexFile, ios::in | ios::out | ios::binary);
+
+        // Write the status flag at the beginning of the file
+        authorsSecondaryFile.seekp(0, ios::beg);
         authorsSecondaryFile.write((char *)&value, sizeof(value));
         authorsSecondaryFile.close();
     }
