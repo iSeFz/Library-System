@@ -23,14 +23,6 @@ public:
         bookSecondaryIndex = book.getSecondaryIndex();
     }
 
-    void readQuery(string &query) {
-        cout << "Enter the query: ";
-        getline(cin, query);
-//        for (char &ch: query)
-//            if (isupper(ch))
-//                ch = (char) tolower(ch);
-    }
-
     void removeSpaces(string &s) {
         while (s.back() == ' ')
             s.pop_back();
@@ -107,8 +99,22 @@ public:
 
     // Handle the select query
     void writeQuery() {
+        // Select all from Authors
+        // Select all from Authors where Author ID=’xxx’;
+        // Select all from Authors where Author Name='xxx';
+
+        // Select Author Name, Author ID, Address from Authors where Author Name = 'Belal', Author ID = '2021';
+
+        // select all from authors where author id=1;
+        // select all from books where author id=’xxx’;
+        // select author name from authors where author id=2;
+        // select author id from authors where author name='Belal';
+
+
+
         string query;
-        readQuery(query);
+        cout << "Enter the query: ";
+        getline(cin, query);
         // parsing table
         string table = parseTable(query);
         if (!validTable(table)) {
@@ -139,17 +145,6 @@ public:
                 }
             }
         }
-
-        // Select all from Authors
-        // Select all from Authors where Author ID=’xxx’;
-        // Select all from Authors where Author Name='xxx';
-
-        // Select Author Name, Author ID, Address from Authors where Author Name = 'Belal', Author ID = '2021';
-
-        // select all from authors where author id=1;
-        // select all from books where author id=’xxx’;
-        // select author name from authors where author id=2;
-        // select author id from authors where author name='Belal';
         if (table == "authors") {
             vector<Author> authors;
             vector<string> authorsID;
@@ -169,8 +164,7 @@ public:
                     }
                     invertedFile.close();
                 }
-            }
-            else if (conditions.count("author id"))
+            } else if (conditions.count("author id"))
                 authorsID.push_back(conditions["author id"]);
             else if (conditions.count("author name")) {
                 string name = conditions["author name"];
@@ -186,9 +180,14 @@ public:
                     }
                     invertedFile.close();
                 }
+            } else {
+                // NO WHERE CONDITIONS
+                for (auto authorID: authorPrimaryIndex)
+                    authorsID.push_back(to_string(authorID.first));
             }
             // remove duplicates
-            authorsID.resize(distance(authorsID.begin(), unique(authorsID.begin(), authorsID.end())));
+            sort(authorsID.begin(), authorsID.end());
+            authorsID.erase(unique(authorsID.begin(), authorsID.end()), authorsID.end());
             for (int i = 0; i < authorsID.size(); ++i) {
                 long long id = stoll(authorsID[i]);
                 if (authorPrimaryIndex.find(id) != authorPrimaryIndex.end()) {
@@ -203,30 +202,107 @@ public:
                 }
             }
 
-            if (columns.size() == 1 && columns.count("all")) {
-                cout << "Author ID                    Author Name                    Author Address\n";
-                for (auto &author: authors)
-                    cout << author.authorID << "   " << author.authorName << "       " << author.address << endl;
-                return;
+            if(columns.count("all")){
+                columns["author id"] = true;
+                columns["author name"] = true;
+                columns["address"] = true;
             }
-
             if (columns.count("author id"))
-                cout << "Author ID             ";
+                cout << "Author ID" << setw(11) << ' ';
             if (columns.count("author name"))
-                cout << "Author Name           ";
+                cout << "Author Name" << setw(24) << ' ';
             if (columns.count("address"))
-                cout << "Author Address        ";
-
+                cout << "Author Address";
+            cout << '\n';
             for (auto &author: authors) {
                 if (columns.count("author id"))
-                    cout << author.authorID << "      ";
+                    cout << author.authorID << setw(20-strlen(author.authorID)) << ' ';
                 if (columns.count("author name"))
-                    cout << author.authorName << "           ";
+                    cout << author.authorName << setw(35-strlen(author.authorName)) << ' ';
                 if (columns.count("address"))
-                    cout << author.address << endl;
+                    cout << author.address;
+                cout << '\n';
             }
         } else if (table == "books") {
             vector<Book> books;
+            vector<string> booksISBN;
+            if (conditions.count("isbn") && conditions.count("author id")) {
+                string isbn = conditions["isbn"];
+                string id = conditions["author id"];
+                if (bookSecondaryIndex.find(stoll(id)) != bookSecondaryIndex.end()) {
+                    short nextRecordPointer = bookSecondaryIndex[stoll(id)];
+                    long long bookISBN;
+                    fstream invertedFile(LibraryUtilities::booksSecondaryIndexLinkedListFile, ios::in | ios::binary);
+                    while (nextRecordPointer != -1) {
+                        invertedFile.seekg(nextRecordPointer * 10, ios::beg);
+                        invertedFile.read((char *) &bookISBN, sizeof(long long));
+                        invertedFile.read((char *) &nextRecordPointer, sizeof(short));
+                        if (isbn == to_string(bookISBN))
+                            booksISBN.push_back(to_string(bookISBN));
+                    }
+                    invertedFile.close();
+                }
+            } else if (conditions.count("isbn"))
+                booksISBN.push_back(conditions["isbn"]);
+            else if (conditions.count("author id")) {
+                string id = conditions["author id"];
+                if (bookSecondaryIndex.find(stoll(id)) != bookSecondaryIndex.end()) {
+                    short nextRecordPointer = bookSecondaryIndex[stoll(id)];
+                    long long bookISBN;
+                    fstream invertedFile(LibraryUtilities::booksSecondaryIndexLinkedListFile, ios::in | ios::binary);
+                    while (nextRecordPointer != -1) {
+                        invertedFile.seekg(nextRecordPointer * 10, ios::beg);
+                        invertedFile.read((char *) &bookISBN, sizeof(long long));
+                        invertedFile.read((char *) &nextRecordPointer, sizeof(short));
+                        booksISBN.push_back(to_string(bookISBN));
+                    }
+                    invertedFile.close();
+                }
+            } else {
+                // NO WHERE CONDITIONS
+                for (auto bookISBN: bookPrimaryIndex)
+                    booksISBN.push_back(to_string(bookISBN.first));
+            }
+            // remove duplicates
+            sort(booksISBN.begin(), booksISBN.end());
+            booksISBN.erase(unique(booksISBN.begin(), booksISBN.end()), booksISBN.end());
+
+            for (int i = 0; i < booksISBN.size(); ++i) {
+                long long id = stoll(booksISBN[i]);
+                if (bookPrimaryIndex.find(id) != bookPrimaryIndex.end()) {
+                    short offset = bookPrimaryIndex[id];
+                    fstream booksFile(LibraryUtilities::booksFile, ios::in | ios::binary);
+                    booksFile.seekg(offset, ios::beg);
+                    Book book{};
+                    booksFile.getline(book.ISBN, 15, '|');
+                    booksFile.getline(book.bookTitle, 30, '|');
+                    booksFile.getline(book.authorID, 30, '|');
+                    books.push_back(book);
+                }
+            }
+            if(columns.count("all")){
+                columns["isbn"] = true;
+                columns["book title"] = true;
+                columns["author id"] = true;
+            }
+            if (columns.count("isbn"))
+                cout << "Book ISBN" << setw(11) << ' ';
+            if (columns.count("book title"))
+                cout << "Book Title" << setw(24) << ' ';
+            if (columns.count("author id"))
+                cout << "Author ID";
+            cout << '\n';
+
+            for (auto &book: books) {
+                if (columns.count("isbn"))
+                    cout << book.ISBN << setw(20-strlen(book.ISBN)) << ' ';
+                if (columns.count("book title"))
+                    cout << book.bookTitle << setw(35-strlen(book.bookTitle)) << ' ';
+                if (columns.count("author id"))
+                    cout << book.authorID;
+                cout << '\n';
+
+            }
         }
     }
 
