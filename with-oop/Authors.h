@@ -1,20 +1,11 @@
 #ifndef AUTHORS_H
 #define AUTHORS_H
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <map>
-#include <cstring>
-#include "LibraryUtilities.h"
-#include "Author.h"
+
 #include "AuthorsAdding.h"
 #include "AuthorsConfiguration.h"
 #include "AuthorsDeleting.h"
-#include "AuthorsPrinting.h"
 #include "AuthorsTesting.h"
 #include "AuthorsUpdating.h"
-
-using namespace std;
 
 class Authors
 {
@@ -25,85 +16,45 @@ private:
     AuthorsConfiguration authorsConfiguration = AuthorsConfiguration();
     AuthorsUpdating authorsUpdating = AuthorsUpdating();
     AuthorsDeleting authorsDeleting = AuthorsDeleting();
-    AuthorsPrinting authorsPrinting = AuthorsPrinting();
     AuthorsTesting authorsTesting = AuthorsTesting();
 
 public:
+    // Getters for indices
+    map<long long, short> &getPrimaryIndex() { return authorsPrimaryIndex; }
+    map<string, short> &getSecondaryIndex() { return authorsSecondaryIndex; }
+
     // Retrieve data from the map & write it back to the physical file on disk
-    void saveAuthorPrimaryIndex()
-    {
-        authorsConfiguration.saveAuthorPrimaryIndex(authorsPrimaryIndex);
-    }
+    void saveAuthorPrimaryIndex() { authorsConfiguration.saveAuthorPrimaryIndex(authorsPrimaryIndex); }
 
     // Load authors primary index file into memory
-    void loadAuthorPrimaryIndex()
-    {
-        authorsConfiguration.loadAuthorPrimaryIndex(authorsPrimaryIndex);
-    }
+    void loadAuthorPrimaryIndex() { authorsConfiguration.loadAuthorPrimaryIndex(authorsPrimaryIndex); }
 
-    void loadAuthorsSecondaryIndex()
-    {
-        authorsConfiguration.loadAuthorsSecondaryIndex(authorsSecondaryIndex);
-    }
+    // Load authors secondary index file into memory
+    void loadAuthorsSecondaryIndex() { authorsConfiguration.loadAuthorsSecondaryIndex(authorsSecondaryIndex); }
 
-    void saveAuthorsSecondaryIndex()
-    {
-        authorsConfiguration.saveAuthorsSecondaryIndex(authorsSecondaryIndex);
-    }
+    // Retrieve data from the map & write it back to the physical file on disk
+    void saveAuthorsSecondaryIndex() { authorsConfiguration.saveAuthorsSecondaryIndex(authorsSecondaryIndex); }
 
     // Add a new author helper function
-    void addAuthor()
-    {
-        authorsAdding.addAuthor(authorsPrimaryIndex, authorsSecondaryIndex);
-    }
+    void addAuthor() { authorsAdding.addAuthor(authorsPrimaryIndex, authorsSecondaryIndex); }
 
     // Update author name using author ID
-    void updateAuthorName()
-    {
-        authorsUpdating.updateAuthorName(authorsSecondaryIndex);
-    }
+    void updateAuthorName() { authorsUpdating.updateAuthorName(authorsSecondaryIndex); }
 
     // Delete an author using author ID
-    void deleteAuthor()
-    {
-        authorsDeleting.deleteAuthor(authorsPrimaryIndex, authorsSecondaryIndex);
-    }
+    void deleteAuthor() { authorsDeleting.deleteAuthor(authorsPrimaryIndex, authorsSecondaryIndex); }
 
     // Print author using author ID
-    void printAuthor()
-    {
-        authorsPrinting.printAuthor(authorsPrimaryIndex);
-    }
+    void printAuthor() { authorsConfiguration.printAuthor(authorsPrimaryIndex); }
 
     // For testing
-    void printAuthorsFile()
-    {
-        authorsTesting.printAuthorsFile();
-    }
+    void printAuthorsFile() { authorsTesting.printAuthorsFile(); }
 
-    void printAuthorsPrimaryIndex()
-    {
-        authorsTesting.printAuthorsPrimaryIndex(authorsPrimaryIndex);
-    }
+    void printAuthorsPrimaryIndex() { authorsTesting.printAuthorsPrimaryIndex(authorsPrimaryIndex); }
 
-    void printAuthorsSecondaryIndex()
-    {
-        authorsTesting.printAuthorsSecondaryIndex(authorsSecondaryIndex);
-    }
+    void printAuthorsSecondaryIndex() { authorsTesting.printAuthorsSecondaryIndex(authorsSecondaryIndex); }
 
-    void printAuthorsInvertedList()
-    {
-        authorsTesting.printAuthorsInvertedList();
-    }
-
-    map<long long, short> &getPrimaryIndex()
-    {
-        return authorsPrimaryIndex;
-    }
-    map<string, short> &getSecondaryIndex()
-    {
-        return authorsSecondaryIndex;
-    }
+    void printAuthorsInvertedList() { authorsTesting.printAuthorsInvertedList(); }
 };
 
 #endif
