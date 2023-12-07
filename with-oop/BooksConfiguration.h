@@ -3,6 +3,7 @@
 
 #include "LibraryUtilities.h"
 #include "Book.h"
+#include "BooksAddingSecondaryIndex.h"
 
 class BooksConfiguration
 {
@@ -177,9 +178,7 @@ public:
         // If the file is outdated, recreate it
         if (isBookPrimIdxUpToDate != '1')
         {
-            booksSecondaryIndexFileFstream.seekp(0, ios::beg);
-            char updatedSymbol = '0';
-            booksSecondaryIndexFileFstream.write((char *)&updatedSymbol, sizeof(char));
+            createBookSecondaryIndex(booksSecondaryIndex); // Create the secondary index file & load it into memory
             return;
         }
 
@@ -196,6 +195,70 @@ public:
             booksSecondaryIndex.insert({tempAuthorId, tempRecordPointer});
         }
         booksSecondaryIndexFileFstream.close();
+    }
+
+    // Create the book secondary index file
+    void createBookSecondaryIndex(map<long long, short> &booksSecondaryIndex)
+    {
+        // clear the inverted list file
+        fstream invertedList(LibraryUtilities::booksSecondaryIndexLinkedListFile, ios::out | ios::binary);
+        invertedList.close();
+        
+        // Open the data file in input mode
+        fstream books(LibraryUtilities::booksFile, ios::in | ios::binary);
+
+        // Skip the header value
+        books.seekg(2, ios::beg);
+
+        // Create the index file
+        while (books)
+        {
+            int recordOffset = books.tellg();
+            char firstChar;
+            books.read((char *)&firstChar, sizeof(char));
+            // if the record is deleted
+            if (firstChar == '*')
+            {
+                short previousRecord, recordSize;
+                books.ignore(1);                                    // ignore the delimiter
+                books.read((char *)&previousRecord, sizeof(short)); // read the previous record
+                books.ignore(1);                                    // ignore the delimiter
+                books.read((char *)&recordSize, sizeof(short));     // read the record size
+                books.seekg(recordOffset + recordSize, ios::beg);   // jump to the next record
+                continue;
+            }
+            else // Return the cursor back one character that was read
+                books.seekg(-1, ios::cur);
+
+            // Read the record size to be able to jump to the end of the record
+            short recordSize;
+            books.read((char *)&recordSize, sizeof(short));
+            // Store the byte offset of the current record
+            short tempOffset = books.tellg();
+            if (tempOffset == -1) // If the file has no records, just the header
+                break;
+
+            // Read the value of book isbn
+            Book book;
+            books.getline(book.ISBN, 15, '|');
+            books.getline(book.bookTitle, 30, '|');
+            books.getline(book.authorID, 15, '|');
+
+            if (books.peek() == '|')
+            {
+                books.seekg(1, ios::cur);
+            }
+
+            // Insert the record into the map to be sorted in memory by the author id
+            BooksAddingSecondaryIndex::add(book, booksSecondaryIndex);
+        }
+        books.close();
+
+        // Write the status flag at the beginning of the file
+        LibraryUtilities::markBooksSecondaryIndexFlag('0');
+
+        // Save the index file to disk
+        saveBookSecondaryIndex(booksSecondaryIndex);
     }
 
     // Print book using ISBN
