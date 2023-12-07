@@ -6,17 +6,15 @@
 using namespace std;
 
 // Library class to manage all methods
-class Library
-{
+class Library {
 private:
     Authors authors = Authors();
     Books books = Books();
-    Queries queries;
+    Queries queries = Queries();
 
 public:
     // Main method to start the program
-    void start()
-    {
+    void start() {
         cout << "\tWelcome to the Library Catalog System!\n";
         LibraryUtilities::checkFilesExist();
         // Load index files into memory
@@ -24,10 +22,8 @@ public:
         authors.loadAuthorsSecondaryIndex();
         books.loadBookPrimaryIndex();
         books.loadBookSecondaryIndex();
-        queries.setIndexes(authors, books);
         // Loop until user exits
-        while (true)
-        {
+        while (true) {
             cout << "\n1. Add New Author\n"
                     "2. Add New Book\n"
                     "3. Update Author Name (Author ID)\n"
@@ -49,95 +45,58 @@ public:
             cout << "Please Enter Choice (1-10) ==> ";
             string choice;
             getline(cin, choice);
-            if (choice == "1")
-            {
+            if (choice == "1") {
                 cout << "\tAdding New Author\n";
                 authors.addAuthor();
-            }
-            else if (choice == "2")
-            {
+            } else if (choice == "2") {
                 cout << "\tAdding New Book\n";
                 books.addBook(authors.getPrimaryIndex());
-            }
-            else if (choice == "3")
-            {
+            } else if (choice == "3") {
                 cout << "\tUpdating Author Name\n";
                 authors.updateAuthorName();
-            }
-            else if (choice == "4")
-            {
+            } else if (choice == "4") {
                 cout << "\tUpdating Book Title\n";
                 books.updateBookTitle();
-            }
-            else if (choice == "5")
-            {
+            } else if (choice == "5") {
                 books.deleteBook();
-            }
-            else if (choice == "6")
-            {
+            } else if (choice == "6") {
                 authors.deleteAuthor();
-            }
-            else if (choice == "7")
-            {
+            } else if (choice == "7") {
                 cout << "\tPrinting Author Using ID\n";
                 authors.printAuthor();
-            }
-            else if (choice == "8")
-            {
+            } else if (choice == "8") {
                 cout << "\tPrinting Book Using ISBN\n";
                 books.printBook();
-            }
-            else if (choice == "9")
-            {
+            } else if (choice == "9") {
+                queries.setIndexes(authors, books);
                 queries.writeQuery();
-            }
-            else if (choice == "10")
-            {
+            } else if (choice == "10") {
                 terminate();
                 break;
-            }
-            else if (choice == "11")
-            {
+            } else if (choice == "11") {
                 books.printBooksFile();
-            }
-            else if (choice == "12")
-            {
+            } else if (choice == "12") {
                 books.printBooksPrimaryIndex();
-            }
-            else if (choice == "13")
-            {
+            } else if (choice == "13") {
                 books.printBooksSecondaryIndex();
-            }
-            else if (choice == "14")
-            {
+            } else if (choice == "14") {
                 books.printBooksInvertedList();
-            }
-            else if (choice == "15")
-            {
+            } else if (choice == "15") {
                 authors.printAuthorsFile();
-            }
-            else if (choice == "16")
-            {
+            } else if (choice == "16") {
                 authors.printAuthorsPrimaryIndex();
-            }
-            else if (choice == "17")
-            {
+            } else if (choice == "17") {
                 authors.printAuthorsSecondaryIndex();
-            }
-            else if (choice == "18")
-            {
+            } else if (choice == "18") {
                 authors.printAuthorsInvertedList();
-            }
-            else
-            {
+            } else {
                 cerr << "\n\tINVALID CHOICE!!\n";
             }
         }
     }
 
     // Terminate the program correctly with saved changes
-    void terminate()
-    {
+    void terminate() {
         // Save the primary index files to the disk with the updated indices
         books.saveBookPrimaryIndex();
         books.saveBookSecondaryIndex();
@@ -148,8 +107,7 @@ public:
 };
 
 // Start the program
-int main()
-{
+int main() {
     Library lib;
     lib.start();
     return 0;

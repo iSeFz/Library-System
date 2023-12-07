@@ -15,15 +15,27 @@ private:
     map<string, short> authorSecondaryIndex;
     map<long long, short> bookPrimaryIndex;
     map<long long, short> bookSecondaryIndex;
+    string query, table;
+    map<string, bool> columns;
+    map<string, string> conditions;
+    bool validColumns, validTable, validConditions;
 public:
+    void initiate(){
+        validColumns = true;
+        validTable = true;
+        validConditions = true;
+        query = "";
+        table = "";
+        conditions.clear();
+        columns.clear();
+    }
     void setIndexes(Authors &author, Books &book) {
         authorPrimaryIndex = author.getPrimaryIndex();
         authorSecondaryIndex = author.getSecondaryIndex();
         bookPrimaryIndex = book.getPrimaryIndex();
         bookSecondaryIndex = book.getSecondaryIndex();
     }
-
-    void removeSpaces(string &s) {
+    static void removeSpaces(string &s) {
         while (s.back() == ' ')
             s.pop_back();
         int j = 0;
@@ -32,17 +44,21 @@ public:
         s = s.substr(j);
     }
 
-    string parseTable(string &query) {
+    void readQuery(){
+        cout << "Enter the query: ";
+        getline(cin, query);
+    }
+
+    void parseQuery(){
+        parseTable();
+        parseColumns();
+        parseConditions();
+    }
+    void parseTable() {
         int fromPointer = (int) query.find("from"), wherePointer = (int) query.find("where");
-        string table = query.substr(fromPointer + 5, wherePointer - fromPointer - 6);
-        return table;
+        table = query.substr(fromPointer + 5, wherePointer - fromPointer - 6);
     }
-
-    bool validTable(string &table) {
-        return table == "books" || table == "authors";
-    }
-
-    void parseColumns(string &query, map<string, bool> &columns) {
+    void parseColumns() {
         int fromPointer = (int) query.find("from");
         string selectedColumns = query.substr(7, fromPointer - 8);
         string column;
@@ -58,15 +74,7 @@ public:
             }
         }
     }
-
-    bool validColumn(const string &column, string &table) {
-        if (column == "all" || column == "author id")return true;
-        if (table == "books" && (column == "isbn" || column == "book title"))return true;
-        if (table == "authors" && (column == "author name" || column == "address"))return true;
-        return false;
-    }
-
-    void parseConditions(string &query, map<string, string> &conditions) {
+    void parseConditions() {
         int wherePointer = (int) query.find("where");
         string totalConditions = query.substr(wherePointer + 5);
         string condition;
@@ -97,54 +105,52 @@ public:
         }
     }
 
-    // Handle the select query
-    void writeQuery() {
-        // Select all from Authors
-        // Select all from Authors where Author ID=’xxx’;
-        // Select all from Authors where Author Name='xxx';
-
-        // Select Author Name, Author ID, Address from Authors where Author Name = 'Belal', Author ID = '2021';
-
-        // select all from authors where author id=1;
-        // select all from books where author id=’xxx’;
-        // select author name from authors where author id=2;
-        // select author id from authors where author name='Belal';
-
-
-
-        string query;
-        cout << "Enter the query: ";
-        getline(cin, query);
-        // parsing table
-        string table = parseTable(query);
-        if (!validTable(table)) {
+    void validateQuery(){
+        if(!validateTable()){
+            validTable = false;
             cerr << "Invalid Query: Table " + table + " does not exist.\n";
             return;
         }
-        // parsing columns
-        map<string, bool> columns;
-        parseColumns(query, columns);
-        for (const auto &column: columns) {
-            if (!validColumn(column.first, table)) {
-                cerr << "Invalid Query: Column " + column.first + " DOES NOT exists\n";
-                return;
-            }
-        }
-        if (columns.count("all") && columns.size() != 1) {
-            cerr << "Invalid Query\n";
+        if(!validateColumns()){
+            validColumns = false;
+            cerr << "Invalid Query: Columns DOES NOT exist\n";
             return;
         }
-        // parse conditions
-        map<string, string> conditions;
-        if (query.find("where") != -1) {
-            parseConditions(query, conditions);
-            for (const auto &condition: conditions) {
-                if (!validColumn(condition.first, table)) {
-                    cerr << "Invalid Query: Column " + condition.first + " DOES NOT exists\n";
-                    return;
-                }
-            }
+        if(!validateConditions()){
+            validConditions = false;
+            cerr << "Invalid Query: Error in Where conditions\n";
+            return;
         }
+    }
+    bool validateTable() {
+        return table == "books" || table == "authors";
+    }
+    bool validateColumns() {
+        for (const auto &c: columns) {
+            string column = c.first;
+            if (column == "all" || column == "author id")continue;
+            if (table == "books" && (column == "isbn" || column == "book title"))continue;
+            if (table == "authors" && (column == "author name" || column == "address"))continue;
+            return false;
+        }
+        if (columns.count("all") && columns.size() != 1)return false;
+        return true;
+    }
+    bool validateConditions(){
+        if (query.find("where") != -1) {
+            for (const auto &condition: conditions) {
+                string column = condition.first;
+                if (column == "all" || column == "author id")continue;
+                if (table == "books" && (column == "isbn" || column == "book title"))continue;
+                if (table == "authors" && (column == "author name" || column == "address"))continue;
+                return false;
+            }
+            return true;
+        }
+        else return true;
+    }
+
+    void runQuery(){
         if (table == "authors") {
             vector<Author> authors;
             vector<string> authorsID;
@@ -216,9 +222,9 @@ public:
             cout << '\n';
             for (auto &author: authors) {
                 if (columns.count("author id"))
-                    cout << author.authorID << setw(20-strlen(author.authorID)) << ' ';
+                    cout << author.authorID << setw(20-(int)strlen(author.authorID)) << ' ';
                 if (columns.count("author name"))
-                    cout << author.authorName << setw(35-strlen(author.authorName)) << ' ';
+                    cout << author.authorName << setw(35-(int)strlen(author.authorName)) << ' ';
                 if (columns.count("address"))
                     cout << author.address;
                 cout << '\n';
@@ -295,15 +301,32 @@ public:
 
             for (auto &book: books) {
                 if (columns.count("isbn"))
-                    cout << book.ISBN << setw(20-strlen(book.ISBN)) << ' ';
+                    cout << book.ISBN << setw(20-(int)strlen(book.ISBN)) << ' ';
                 if (columns.count("book title"))
-                    cout << book.bookTitle << setw(35-strlen(book.bookTitle)) << ' ';
+                    cout << book.bookTitle << setw(35-(int)strlen(book.bookTitle)) << ' ';
                 if (columns.count("author id"))
                     cout << book.authorID;
                 cout << '\n';
-
             }
         }
+    }
+    // Handle the select query
+    void writeQuery() {
+        // Select all from Authors
+        // Select all from Authors where Author ID=’xxx’;
+        // Select all from Authors where Author Name='xxx';
+
+        // Select Author Name, Author ID, Address from Authors where Author Name = 'Belal', Author ID = '2021';
+        // select all from authors where author id=1;
+        // select all from books where author id=’xxx’;
+        // select author name from authors where author id=2;
+        // select author id from authors where author name='Belal';
+        initiate();
+        readQuery();
+        parseQuery();
+        validateQuery();
+        if(!validTable||!validColumns||!validConditions)return;
+        runQuery();
     }
 
 };
