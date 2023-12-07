@@ -26,6 +26,7 @@ public:
         }
     }
 
+    // applying the updates in the authors data file
     void updateAuthorNameInDataFile(char newAuthorName[30], int byteOffset)
     {
         fstream dataFile(LibraryUtilities::authorsFile, ios::in | ios::out | ios::binary);
