@@ -1,8 +1,6 @@
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <map>
-#include <cstring>
+#ifndef BOOKS_UPDATING_H
+#define BOOKS_UPDATING_H
+
 #include "LibraryUtilities.h"
 #include "Book.h"
 
@@ -47,22 +45,19 @@ public:
         // reaching the title field beginning
         dataFile.seekg(-(maxSize + 1), ios::cur);
 
-        // case 1 --> length of new title > length of old title
-        if (strlen(newBookTitle) > maxSize)
+        // case 1 --> length of new title < length of old title
+        if (strlen(newBookTitle) < maxSize)
         {
-            newBookTitle[maxSize] = '\0';
-            dataFile.write(newBookTitle, maxSize);
-        }
-        // case 2 --> length of new title < length of old title
-        else if (strlen(newBookTitle) < maxSize)
-        {
-            for (int i = strlen(newBookTitle); i < maxSize; i++)
+            newBookTitle[strlen(newBookTitle)] = '\0';
+
+            for (int i = strlen(newBookTitle)+1; i < maxSize; i++)
             {
                 newBookTitle[i] = '_';
             }
             dataFile.write(newBookTitle, maxSize);
         }
-        // case 3 --> length of new title == length of old title
+         // case 2 & 3  --> length of new title == length of old title,
+        // length of new title > length of old title
         else
         {
             dataFile.write(newBookTitle, maxSize);
@@ -72,3 +67,5 @@ public:
         cout << "\tBook title is updated successfully\n";
     }
 };
+
+#endif // BOOKS_UPDATING_H
