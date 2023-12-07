@@ -59,6 +59,11 @@ public:
                 cout << "\tAdding New Book\n";
                 books.addBook(authors.getPrimaryIndex());
             }
+            else if (choice == "3")
+            {
+                cout << "\tUpdating Author Name\n";
+                authors.updateAuthorName();
+            }
             else if (choice == "4")
             {
                 cout << "\tUpdating Book Title\n";

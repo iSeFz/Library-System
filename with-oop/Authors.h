@@ -39,7 +39,7 @@ public:
     void addAuthor() { authorsAdding.addAuthor(authorsPrimaryIndex, authorsSecondaryIndex); }
 
     // Update author name using author ID
-    void updateAuthorName() { authorsUpdating.updateAuthorName(authorsSecondaryIndex); }
+    void updateAuthorName() { authorsUpdating.updateAuthorName(authorsPrimaryIndex); }
 
     // Delete an author using author ID
     void deleteAuthor() { authorsDeleting.deleteAuthor(authorsPrimaryIndex, authorsSecondaryIndex); }
