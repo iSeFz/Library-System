@@ -1,14 +1,13 @@
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <map>
-#include <cstring>
+#ifndef BOOKS_DELETING_H
+#define BOOKS_DELETING_H
+
 #include "LibraryUtilities.h"
 #include "Book.h"
 
 class BooksDeleting
 {
 public:
+    // Delete a book using ISBN
     void deleteBook(map<long long, short> &booksPrimaryIndex, map<long long, short> &booksSecondaryIndex)
     {
         long long ISBN;
@@ -22,11 +21,10 @@ public:
             deleteFromBooksSecondaryIndexFile(booksSecondaryIndex, ISBN, getBookAuthorIdAt(recordStartoffset));
             deleteFromBooksPrimaryIndexFile(booksPrimaryIndex, ISBN);
             deleteFromBooksDataFile(recordStartoffset);
+            cout << "\tBook Deleted Successfully\n";
         }
         else
-        {
             cout << "\tBook does not exist\n";
-        }
     }
 
     void deleteFromBooksDataFile(int recordStartoffset)
@@ -149,3 +147,5 @@ public:
         }
     }
 };
+
+#endif // BOOKS_DELETING_H

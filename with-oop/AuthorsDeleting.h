@@ -1,8 +1,6 @@
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <map>
-#include <cstring>
+#ifndef AUTHORS_DELETING_H
+#define AUTHORS_DELETING_H
+
 #include "LibraryUtilities.h"
 #include "Author.h"
 
@@ -23,11 +21,10 @@ public:
             deleteFromAuthorsSecondaryIndexFile(authorsSecondaryIndex, authorId, getAuthorNameAt(recordStartoffset));
             deleteFromAuthorsPrimaryIndexFile(authorsPrimaryIndex, authorId);
             deleteFromAuthorsDataFile(recordStartoffset);
+            cout << "\tAuthor Deleted Successfully\n";
         }
         else
-        {
             cout << "\tAuthor does not exist\n";
-        }
     }
 
     string getAuthorNameAt(short startOffset)
@@ -150,3 +147,5 @@ public:
         }
     }
 };
+
+#endif // AUTHORS_DELETING_H
