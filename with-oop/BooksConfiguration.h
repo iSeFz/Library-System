@@ -1,8 +1,6 @@
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <map>
-#include <cstring>
+#ifndef BOOKS_CONF_H
+#define BOOKS_CONF_H
+
 #include "LibraryUtilities.h"
 #include "Book.h"
 
@@ -96,34 +94,6 @@ public:
         LibraryUtilities::markBooksPrimaryIndexFlag('1');
     }
 
-    // Retrieve data from the map & write it back to the physical file on disk
-    void saveBookSecondaryIndex(map<long long, short> &booksSecondaryIndex)
-    {
-        // Open the file in multiple modes
-        fstream booksSecondaryIndexFstream(LibraryUtilities::booksSecondaryIndexFile, ios::in | ios::out | ios::binary);
-
-        // Read the status flag
-        char isBookSecondaryIdxUpToDate;
-        booksSecondaryIndexFstream.seekg(0, ios::beg);
-        booksSecondaryIndexFstream.read((char *)&isBookSecondaryIdxUpToDate, sizeof(char));
-
-        // If the file is already up to date, do not write & exit
-        if (isBookSecondaryIdxUpToDate == '1')
-            return;
-
-        // Otherwise if the file is not up to date OR it is the first time to save it, write it to disk
-        // Update the index file by rewriting it back to disk after inserting into the map
-        for (auto record : booksSecondaryIndex)
-        {
-            booksSecondaryIndexFstream.write((char *)&record.first, sizeof(long long)); // Write the author ID
-            booksSecondaryIndexFstream.write((char *)&record.second, sizeof(short));    // Write the first record pointer (RRN) in the inverted list file
-        }
-        booksSecondaryIndexFstream.close();
-
-        // Update the file status to be up to date
-        LibraryUtilities::markBooksSecondaryIndexFlag('1');
-    }
-
     // Load books primary index file into memory
     void loadBookPrimaryIndex(map<long long, short> &booksPrimaryIndex)
     {
@@ -159,6 +129,34 @@ public:
             booksPrimaryIndex.insert({tempISBN, tempOffset});
         }
         bookPrimIdx.close();
+    }
+
+    // Retrieve data from the map & write it back to the physical file on disk
+    void saveBookSecondaryIndex(map<long long, short> &booksSecondaryIndex)
+    {
+        // Open the file in multiple modes
+        fstream booksSecondaryIndexFstream(LibraryUtilities::booksSecondaryIndexFile, ios::in | ios::out | ios::binary);
+
+        // Read the status flag
+        char isBookSecondaryIdxUpToDate;
+        booksSecondaryIndexFstream.seekg(0, ios::beg);
+        booksSecondaryIndexFstream.read((char *)&isBookSecondaryIdxUpToDate, sizeof(char));
+
+        // If the file is already up to date, do not write & exit
+        if (isBookSecondaryIdxUpToDate == '1')
+            return;
+
+        // Otherwise if the file is not up to date OR it is the first time to save it, write it to disk
+        // Update the index file by rewriting it back to disk after inserting into the map
+        for (auto record : booksSecondaryIndex)
+        {
+            booksSecondaryIndexFstream.write((char *)&record.first, sizeof(long long)); // Write the author ID
+            booksSecondaryIndexFstream.write((char *)&record.second, sizeof(short));    // Write the first record pointer (RRN) in the inverted list file
+        }
+        booksSecondaryIndexFstream.close();
+
+        // Update the file status to be up to date
+        LibraryUtilities::markBooksSecondaryIndexFlag('1');
     }
 
     // Load books secondary index file into memory
@@ -199,4 +197,31 @@ public:
         }
         booksSecondaryIndexFileFstream.close();
     }
+
+    // Print book using ISBN
+    void printBook(map<long long, short> &booksPrimaryIndex)
+    {
+        int ISBN;
+        cout << "Enter Book ISBN: ";
+        cin >> ISBN;
+        auto isbn = booksPrimaryIndex.lower_bound(ISBN);
+        if (isbn != booksPrimaryIndex.end() && isbn->first == ISBN)
+        {
+            int offset = isbn->second;
+            fstream books(LibraryUtilities::booksFile, ios::in | ios::binary);
+            books.seekg(offset, ios::beg);
+            Book book;
+            books.getline(book.ISBN, 15, '|');
+            books.getline(book.bookTitle, 30, '|');
+            books.getline(book.authorID, 15, '|');
+            cout << "\tBook with ISBN #" << book.ISBN << " Data\n";
+            cout << "Book Title: " << book.bookTitle << "\n";
+            cout << "Author ID: " << book.authorID << "\n";
+        }
+        else
+            cout << "\tBook does not exist\n";
+        cin.ignore(); // To keep input stream clean
+    }
 };
+
+#endif // BOOKS_CONF_H
