@@ -1,8 +1,6 @@
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <map>
-#include <cstring>
+#ifndef AUTHORS_CONF_H
+#define AUTHORS_CONF_H
+
 #include "LibraryUtilities.h"
 #include "Author.h"
 
@@ -20,7 +18,25 @@ public:
 
         // Create the index file
         while (authors)
-        { // Read the record size to be able to jump to the end of the record
+        {
+            int recordOffset = authors.tellg();
+            char firstChar;
+            authors.read((char *)&firstChar, sizeof(char));
+            // If the record is deleted, skip to the next record
+            if (firstChar == '*')
+            {
+                short previousRecord, recordSize;
+                authors.ignore(1);                                    // Ignore the delimiter
+                authors.read((char *)&previousRecord, sizeof(short)); // Read the previous record
+                authors.ignore(1);                                    // Ignore the delimiter
+                authors.read((char *)&recordSize, sizeof(short));     // Read the record size
+                authors.seekg(recordOffset + recordSize, ios::beg);   // Jump to the next record
+                continue;
+            }
+            else // Return the cursor back one character that was read
+                authors.seekg(-1, ios::cur);
+
+            // Read the record size to be able to jump to the end of the record
             short recordSize;
             authors.read((char *)&recordSize, sizeof(short));
             // Store the byte offset of the current record
@@ -154,20 +170,20 @@ public:
         short endOffset = authorsSecondaryIndexFileFstream.tellg();
 
         // Check the status field
-        char isAuthorsSecondaryIdxUpToDate;
+        char isAuthorsSecIdxUpToDate;
         authorsSecondaryIndexFileFstream.seekg(0, ios::beg);
-        authorsSecondaryIndexFileFstream.read((char *)&isAuthorsSecondaryIdxUpToDate, sizeof(char));
+        authorsSecondaryIndexFileFstream.read((char *)&isAuthorsSecIdxUpToDate, sizeof(char));
 
         // If the file is outdated, recreate it
-        // if (isAuthorsSecondaryIdxUpToDate != '1')
-        // {
-        //     authorsSecondaryIndexFileFstream.seekp(0, ios::beg);
-        //     char updatedSymbol = '0';
-        //     authorsSecondaryIndexFileFstream.write((char *)&updatedSymbol, sizeof(char));
-        //     return;
-        // }
+        if (isAuthorsSecIdxUpToDate != '1')
+        {
+            authorsSecondaryIndexFileFstream.seekp(0, ios::beg);
+            char updatedSymbol = '0';
+            authorsSecondaryIndexFileFstream.write((char *)&updatedSymbol, sizeof(char));
+            return;
+        }
 
-        // Insert all records into the books primary index map
+        // Insert all records into the authors secondary index map
         while (authorsSecondaryIndexFileFstream)
         { // If reached the end of file, exit
             if (authorsSecondaryIndexFileFstream.tellg() == endOffset)
@@ -176,9 +192,11 @@ public:
             short tempRecordPointer;
             authorsSecondaryIndexFileFstream.read((char *)&tempAuthorName, sizeof(char[30]));
             authorsSecondaryIndexFileFstream.read((char *)&tempRecordPointer, sizeof(short));
-            // Insert the record into the map to be sorted in memory by the book isbn
+            // Insert the record into the map to be sorted in memory by the author name
             authorsSecondaryIndex.insert({tempAuthorName, tempRecordPointer});
         }
         authorsSecondaryIndexFileFstream.close();
     }
 };
+
+#endif // AUTHORS_CONF_H
