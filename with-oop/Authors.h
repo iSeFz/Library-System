@@ -1,3 +1,5 @@
+#ifndef AUTHORS_H
+#define AUTHORS_H
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -98,4 +100,10 @@ public:
     {
         return authorsPrimaryIndex;
     }
+    map<string, short> &getSecondaryIndex()
+    {
+        return authorsSecondaryIndex;
+    }
 };
+
+#endif

@@ -11,7 +11,7 @@ class Library
 private:
     Authors authors = Authors();
     Books books = Books();
-    Queries queries = Queries();
+    Queries queries;
 
 public:
     // Main method to start the program
@@ -24,6 +24,7 @@ public:
         authors.loadAuthorsSecondaryIndex();
         books.loadBookPrimaryIndex();
         books.loadBookSecondaryIndex();
+        queries.setIndexes(authors, books);
         // Loop until user exits
         while (true)
         {

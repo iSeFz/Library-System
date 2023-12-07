@@ -1,3 +1,5 @@
+#ifndef BOOKS_H
+#define BOOKS_H
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -100,4 +102,13 @@ public:
     {
         booksTesting.printBooksPrimaryIndex(booksPrimaryIndex);
     }
+    map<long long, short> &getPrimaryIndex()
+    {
+        return booksPrimaryIndex;
+    }
+    map<long long, short> &getSecondaryIndex()
+    {
+        return booksSecondaryIndex;
+    }
 };
+#endif
