@@ -10,22 +10,24 @@ public:
     // Update book title using ISBN
     void updateBookTitle(map<long long, short> &booksPrimaryIndex)
     {
-        int ISBN;
-        int offset;
+        long long ISBN;
+        short offset;
         char newTitle[30];
         cout << "Enter book ISBN: ";
         cin >> ISBN;
-        cout << "Enter new book title: ";
         cin.ignore();
-        cin.getline(newTitle, 30);
-
-        // searching for the record which will be updated in runtime
+        // Searching for the record which will be updated in runtime
         auto isbn = booksPrimaryIndex.lower_bound(ISBN);
         if (isbn != booksPrimaryIndex.end() && isbn->first == ISBN)
         {
             offset = isbn->second;
+            cout << "Enter new book title: ";
+            cin.getline(newTitle, 30);
             updateBookTitleInDataFile(newTitle, offset);
+            cout << "\tBook title updated successfully!\n";
         }
+        else // If the book is not found, print a warning message
+            cerr << "\tBook does NOT exist!\n";
     }
 
     // applying the updates in the books data file
@@ -50,21 +52,17 @@ public:
         {
             newBookTitle[strlen(newBookTitle)] = '\0';
 
-            for (int i = strlen(newBookTitle)+1; i < maxSize; i++)
-            {
+            for (int i = strlen(newBookTitle) + 1; i < maxSize; i++)
                 newBookTitle[i] = '_';
-            }
+
             dataFile.write(newBookTitle, maxSize);
         }
-         // case 2 & 3  --> length of new title == length of old title,
+        // case 2 & 3  --> length of new title == length of old title,
         // length of new title > length of old title
         else
-        {
             dataFile.write(newBookTitle, maxSize);
-        }
 
         dataFile.close();
-        cout << "\tBook title is updated successfully\n";
     }
 };
 

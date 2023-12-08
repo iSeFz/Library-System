@@ -8,26 +8,30 @@ class AuthorsUpdating
 {
 public:
     // Update author name using author ID
-    void updateAuthorName(map<long long, short> &authorsPrimaryIndex,map<string, short> &authorsSecondaryIndex) {
-        int authorID;
-        int offset;
+    void updateAuthorName(map<long long, short> &authorsPrimaryIndex, map<string, short> &authorsSecondaryIndex)
+    {
+        long long authorID;
+        short offset;
         char newName[30];
         cout << "Enter author ID: ";
         cin >> authorID;
-        cout << "Enter new author name: ";
         cin.ignore();
-        cin.getline(newName, 30);
-        // searching for the record which will be updated in runtime
+        // Searching for the record which will be updated in runtime
         auto id = authorsPrimaryIndex.lower_bound(authorID);
         if (id != authorsPrimaryIndex.end() && id->first == authorID)
         {
             offset = id->second;
-            updateAuthorNameInDataFile(newName, offset,authorsSecondaryIndex);
+            cout << "Enter new author name: ";
+            cin.getline(newName, 30);
+            updateAuthorNameInDataFile(newName, offset, authorsSecondaryIndex);
+            cout << "\tAuthor name updated successfully!\n";
         }
+        else // If the author is not found, print a warning message
+            cerr << "\tAuthor does NOT exist!\n";
     }
 
     // applying the updates in the authors data file
-    void updateAuthorNameInDataFile(char newAuthorName[30], int byteOffset,map<string, short> &authorsSecondaryIndex)
+    void updateAuthorNameInDataFile(char newAuthorName[30], int byteOffset, map<string, short> &authorsSecondaryIndex)
     {
         fstream dataFile(LibraryUtilities::authorsFile, ios::in | ios::out | ios::binary);
         // reaching desired record
@@ -48,35 +52,33 @@ public:
         {
             newAuthorName[strlen(newAuthorName)] = '\0';
 
-            for (int i = strlen(newAuthorName)+1; i < maxSize; i++)
-            {
+            for (int i = strlen(newAuthorName) + 1; i < maxSize; i++)
                 newAuthorName[i] = '_';
-            }
+
             dataFile.write(newAuthorName, maxSize);
         }
-            // case 2 & 3  --> length of new name == length of old name,
-            // length of new name > length of old name
+        // case 2 & 3  --> length of new name == length of old name,
+        // length of new name > length of old name
         else
-        {
             dataFile.write(newAuthorName, maxSize);
-        }
 
         dataFile.close();
-        updateAuthorNameInSecondaryIndex(oldName,newAuthorName,authorsSecondaryIndex);
-        cout << "\tAuthor name is updated successfully\n";
+        // Update the secondary index & inverted list files
+        updateAuthorNameInSecondaryIndex(oldName, newAuthorName, authorsSecondaryIndex);
     }
+
     // applying the updates in the authors secondary index
-    void updateAuthorNameInSecondaryIndex(char oldAuthorName[30], char newAuthorName[30], map<string, short> &authorsSecondaryIndex) {
+    void updateAuthorNameInSecondaryIndex(char oldAuthorName[30], char newAuthorName[30], map<string, short> &authorsSecondaryIndex)
+    {
 
         fstream invertedList(LibraryUtilities::authorsSecondaryIndexLinkedListFile, ios::in | ios::out | ios::binary);
         // checking if the inverted list file isn't opened
         if (invertedList.fail())
-        {
             cout << "Failed to open the file.\n";
-        }
-        else {
+        else
+        {
             // step 1 in updating --> modify RRN that is related to old author name, RRN=previousRRN in inverted list
-//______________________________________________________________________________________________________________________
+            //______________________________________________________________________________________________________________________
             // storing RRN value pointed by old name secondary key
             short RRN = authorsSecondaryIndex[oldAuthorName];
             // storing  record size in invertedListFile (fixed size --> long long + short)
@@ -87,51 +89,45 @@ public:
             invertedList.ignore(sizeof(long long));
             // storing previous RRN
             short previousRRN;
-            invertedList.read((char *) &previousRRN, sizeof(short));
+            invertedList.read((char *)&previousRRN, sizeof(short));
 
-            if(previousRRN=='-1')
-            {
-                authorsSecondaryIndex[oldAuthorName]=-1;
-            }
-            else{
+            if (previousRRN == '-1')
+                authorsSecondaryIndex[oldAuthorName] = -1;
+            else
                 authorsSecondaryIndex[oldAuthorName] = previousRRN;
-            }
-//______________________________________________________________________________________________________________________
+            //______________________________________________________________________________________________________________________
             // step 2 in updating --> handling newAuthorName
-//______________________________________________________________________________________________________________________
+            //______________________________________________________________________________________________________________________
             // case 1 in step 2 --> if newAuthorName does not exist in secondary index , then add it to secondary key with its RRN
             // (RRN of primary key (authorID) related to the updated authorName)
-            if (authorsSecondaryIndex.count(newAuthorName) == 0) {
+            if (authorsSecondaryIndex.count(newAuthorName) == 0)
+            {
                 authorsSecondaryIndex[newAuthorName] = RRN;
 
-                invertedList.seekg(RRN*recordSize,ios::beg);
+                invertedList.seekg(RRN * recordSize, ios::beg);
                 invertedList.ignore(sizeof(long long));
 
                 // pointer_to_previous of that primary key (authorID)= -1 (first entry)
-                short firstEntry=-1;
+                short firstEntry = -1;
                 invertedList.write((char *)&firstEntry, sizeof(short));
-
-
             }
             // case 2 in step 2 --> if newAuthorName exists in secondary index , update:
             // secondary key's RRN=RRN of primary key (authorID) related to updated authorName
             // pointer_to_previous of that primary key (authorID) =  secondary key's RRN before updating
-            else {
+            else
+            {
                 short RRN_before_updating = authorsSecondaryIndex[newAuthorName];
                 authorsSecondaryIndex[newAuthorName] = RRN;
-                invertedList.seekg(RRN*recordSize,ios::beg);
+                invertedList.seekg(RRN * recordSize, ios::beg);
                 invertedList.ignore(sizeof(long long));
-                invertedList.write((char *) &RRN_before_updating, sizeof(RRN_before_updating));
-
-
+                invertedList.write((char *)&RRN_before_updating, sizeof(RRN_before_updating));
             }
         }
-//______________________________________________________________________________________________________________________
+        //______________________________________________________________________________________________________________________
         invertedList.close();
 
         // Update the status of the file to be NOT up to date, to save it to the disk afterward
         LibraryUtilities::markAuthorsSecondaryIndexFlag('0');
-
     }
 };
 
