@@ -13,21 +13,8 @@ private:
         fstream invertedList(LibraryUtilities::booksSecondaryIndexLinkedListFile, ios::in | ios::out | ios::binary);
 
         short bestOffset = getBestOffsetInInvertedList();
-        if (invertedList.fail())
-        {
-            cout << "First failing...............\n";
-            return -1; // or handle the error appropriately
-        }
-        cout << "Best palce to insert: " << bestOffset << "\n";
         invertedList.seekp(bestOffset, ios::beg);
-        if (invertedList.fail())
-        {
-            cout << "Failed to open the file.\n";
-            return -1; // or handle the error appropriately
-        }
-        cout << "Writing to the inverted list file......\n";
-        cout << "ISBN = " << ISBN << "\n";
-        cout << "nextRecordPointer = " << nextRecordPointer << "\n";
+
         // Write the ISBN & the next record pointer
         invertedList.write((char *)&ISBN, sizeof(long long));
         invertedList.write((char *)&nextRecordPointer, sizeof(short));
@@ -70,7 +57,7 @@ private:
 
 public:
     // Add the new book to the secondary index file
-    static void add(Book book, map<long long, short> &booksSecondaryIndex)
+    static void add(Book &book, map<long long, short> &booksSecondaryIndex)
     {
         // Convert char array into long long
         long long authorId = LibraryUtilities::convertCharArrToLongLong(book.authorID);
@@ -78,12 +65,8 @@ public:
 
         // Check if the author is unique and is not duplicate
         if (booksSecondaryIndex.count(authorId) == 0)
-        {
-            cout << "Empty list\n";
             // Insert into the secondary index with pointer = -1 because it does not point to any primary key
             booksSecondaryIndex[authorId] = addToInvertedList(ISBN, -1); // RRN
-            cout << "Added value: " << booksSecondaryIndex[authorId] << "\n";
-        }
         else // Otherwise, update the value of the RRN of this name to point to the next RRN
             booksSecondaryIndex[authorId] = addToInvertedList(ISBN, booksSecondaryIndex[authorId]);
 

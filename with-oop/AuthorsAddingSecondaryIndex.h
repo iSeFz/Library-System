@@ -6,23 +6,15 @@
 class AuthorsAddingSecondaryIndex
 {
 private:
-    // Add the new book isbn to the inverted list of primary keys & return the RRN of the added record
+    // Add the new author id to the inverted list of primary keys & return the RRN of the added record
     static short addToInvertedList(long long &authorId, short nextRecordPointer)
     {
         // Open the file in multiple modes
         fstream invertedList(LibraryUtilities::authorsSecondaryIndexLinkedListFile, ios::in | ios::out | ios::binary);
 
         short bestOffset = getBestOffsetInInvertedList();
-        cout << "Best palce to insert: " << bestOffset << "\n";
         invertedList.seekp(bestOffset, ios::beg);
-        if (invertedList.fail())
-        {
-            cout << "Failed to open the file.\n";
-            return -1; // or handle the error appropriately
-        }
-        cout << "Writing to the inverted list file......\n";
-        cout << "Author ID = " << authorId << "\n";
-        cout << "nextRecordPointer = " << nextRecordPointer << "\n";
+
         // Write the Author ID & the next record pointer
         invertedList.write((char *)&authorId, sizeof(long long));
         invertedList.write((char *)&nextRecordPointer, sizeof(short));
@@ -72,12 +64,8 @@ public:
 
         // Check if the name is unique and is not duplicate
         if (authorsSecondaryIndex.count(author.authorName) == 0)
-        {
-            cout << "Empty list\n";
             // Insert into the secondary index with pointer = -1 because it does not point to any primary key
             authorsSecondaryIndex[author.authorName] = addToInvertedList(authorId, -1); // RRN
-            cout << "Added value: " << authorsSecondaryIndex[author.authorName] << "\n";
-        }
         else // Otherwise, update the value of the RRN of this name to point to the next RRN
             authorsSecondaryIndex[author.authorName] = addToInvertedList(authorId, authorsSecondaryIndex[author.authorName]);
 

@@ -34,7 +34,7 @@ public:
         books.read((char *)&header, sizeof(header));
         books.seekg(recordStartoffset, ios::beg);
         books.read((char *)&recordSize, sizeof(short));
-        // string overrideText = "*|" + to_string(header) + "|" + to_string(recordSize) + "|";
+        // Mark the record as deleted
         books.seekp(recordStartoffset, ios::beg);
         books.write((char *)"*", 1);
         books.write((char *)&LibraryUtilities::lengthDelimiter, 1);
@@ -95,7 +95,6 @@ public:
 
         while (true)
         {
-            // cout << "current offset: " << invertedList.tellg() << "\n";
             // Read the ISBN & the next record pointer from the current record
             long long tmpISBN;
             invertedList.read((char *)&tmpISBN, sizeof(long long));
