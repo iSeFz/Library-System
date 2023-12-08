@@ -131,6 +131,67 @@ public:
         authorPrimIdx.close();
     }
 
+    // Create the author secondary index file
+    void createAuthorSecondaryIndex(map<string, short> &authorsSecondaryIndex)
+    {
+        // clear the inverted list file
+        fstream invertedList(LibraryUtilities::authorsSecondaryIndexLinkedListFile, ios::out | ios::binary);
+        invertedList.close();
+        
+        // Open the data file in input mode
+        fstream authors(LibraryUtilities::authorsFile, ios::in | ios::binary);
+
+        // Skip the header value
+        authors.seekg(2, ios::beg);
+
+        // Create the index file
+        while (authors)
+        {
+            int recordOffset = authors.tellg();
+            char firstChar;
+            authors.read((char *)&firstChar, sizeof(char));
+            // If the record is deleted, skip to the next record
+            if (firstChar == '*')
+            {
+                short previousRecord, recordSize;
+                authors.ignore(1);                                    // Ignore the delimiter
+                authors.read((char *)&previousRecord, sizeof(short)); // Read the previous record
+                authors.ignore(1);                                    // Ignore the delimiter
+                authors.read((char *)&recordSize, sizeof(short));     // Read the record size
+                authors.seekg(recordOffset + recordSize, ios::beg);   // Jump to the next record
+                continue;
+            }
+            else // Return the cursor back one character that was read
+                authors.seekg(-1, ios::cur);
+
+            // Read the record size to be able to jump to the end of the record
+            short recordSize;
+            authors.read((char *)&recordSize, sizeof(short));
+            // Store the byte offset of the current record
+            short tempOffset = authors.tellg();
+            if (tempOffset == -1) // If the file has no records, just the header
+                break;
+
+            Author author;
+            authors.getline(author.authorID, 15, '|');
+            authors.getline(author.authorName, 30, '|');
+            authors.getline(author.address, 30, '|');
+
+            if (authors.peek() == '|')
+                authors.seekg(1, ios::cur);
+
+            // Insert the record into the map to be sorted in memory by the author id
+            AuthorsAddingSecondaryIndex::add(author, authorsSecondaryIndex);
+        }
+        authors.close();
+
+        // Write the status flag at the beginning of the file
+        LibraryUtilities::markAuthorsSecondaryIndexFlag('0');
+
+        // Save the index file to disk
+        saveAuthorsSecondaryIndex(authorsSecondaryIndex);
+    }
+    
     // Retrieve data from the map & write it back to the physical file on disk
     void saveAuthorsSecondaryIndex(map<string, short> &authorsSecondaryIndex)
     {
@@ -194,69 +255,6 @@ public:
             authorsSecondaryIndex.insert({tempAuthorName, tempRecordPointer});
         }
         authorsSecondaryIndexFileFstream.close();
-    }
-
-    // Create the author primary index file
-    void createAuthorSecondaryIndex(map<string, short> &authorsSecondaryIndex)
-    {
-        // clear the inverted list file
-        fstream invertedList(LibraryUtilities::authorsSecondaryIndexLinkedListFile, ios::out | ios::binary);
-        invertedList.close();
-        
-        // Open the data file in input mode
-        fstream authors(LibraryUtilities::authorsFile, ios::in | ios::binary);
-
-        // Skip the header value
-        authors.seekg(2, ios::beg);
-
-        // Create the index file
-        while (authors)
-        {
-            int recordOffset = authors.tellg();
-            char firstChar;
-            authors.read((char *)&firstChar, sizeof(char));
-            // If the record is deleted, skip to the next record
-            if (firstChar == '*')
-            {
-                short previousRecord, recordSize;
-                authors.ignore(1);                                    // Ignore the delimiter
-                authors.read((char *)&previousRecord, sizeof(short)); // Read the previous record
-                authors.ignore(1);                                    // Ignore the delimiter
-                authors.read((char *)&recordSize, sizeof(short));     // Read the record size
-                authors.seekg(recordOffset + recordSize, ios::beg);   // Jump to the next record
-                continue;
-            }
-            else // Return the cursor back one character that was read
-                authors.seekg(-1, ios::cur);
-
-            // Read the record size to be able to jump to the end of the record
-            short recordSize;
-            authors.read((char *)&recordSize, sizeof(short));
-            // Store the byte offset of the current record
-            short tempOffset = authors.tellg();
-            if (tempOffset == -1) // If the file has no records, just the header
-                break;
-
-            Author author;
-            authors.getline(author.authorID, 15, '|');
-            authors.getline(author.authorName, 30, '|');
-            authors.getline(author.address, 30, '|');
-
-            if (authors.peek() == '|')
-            {
-                authors.seekg(1, ios::cur);
-            }
-
-            // Insert the record into the map to be sorted in memory by the author id
-            AuthorsAddingSecondaryIndex::add(author, authorsSecondaryIndex);
-        }
-        authors.close();
-
-        // Write the status flag at the beginning of the file
-        LibraryUtilities::markAuthorsSecondaryIndexFlag('0');
-
-        // Save the index file to disk
-        saveAuthorsSecondaryIndex(authorsSecondaryIndex);
     }
 
     // Print author using author ID
