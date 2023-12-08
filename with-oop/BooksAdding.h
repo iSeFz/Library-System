@@ -81,85 +81,87 @@ public:
             books.write((char *)&LibraryUtilities::lengthDelimiter, 1);
             // Add the new book to index files
             addBookToPrimaryIndexFile(book.ISBN, offset, booksPrimaryIndex);
-            // addBookToSecondaryIndexFile(book, booksSecondaryIndex);
             BooksAddingSecondaryIndex::add(book, booksSecondaryIndex);
             cout << "\tNew Book Added Successfully!\n";
             books.close();
         }
         else
         { // Otherwise, if the avail list is NOT empty
-            short prevOffset = header, deletedSize, differSize, tempOffset;
-            bool fragmentation = false;
-            char deleteChar;
-
-            // Seek to the offset of the last deleted record
-            books.seekg(header, ios::beg);
+            short currentOffset = header, prevOffset = -1;
             // First fit algorithm to find the first large enough record to insert the new record into
-            while (true)
+            while (currentOffset != -1)
             {
-                tempOffset = prevOffset; // Store the previous offset before overriding its value
-                // Read the first character of the record to check if it's REALLY a deleted record or not
-                books.read((char *)&deleteChar, 1);
-                // If it's NOT a deleted record, break the loop
-                if (deleteChar != '*')
-                { // Fake the differSize, in order to force insert the new record at the end of the file
-                    differSize = -1;
-                    header = -1;
-                    // Seek to the beginning of file & update the header to be -1
-                    books.seekp(0, ios::beg);
-                    books.write((char *)&header, sizeof(header));
-                    break;
-                }
-                // Otherwise, continue parsing the record
-                books.ignore(1);                                       // Ignore the delimiter '|'
-                books.read((char *)&prevOffset, sizeof(prevOffset));   // Read the offset of the previous deleted record
-                books.ignore(1);                                       // Ignore the delimiter '|'
-                books.read((char *)&deletedSize, sizeof(deletedSize)); // Read the size of the current deleted record
+                short nextOffset, currentDeletedSize;
+                // Seek to the offset of the last deleted record
+                books.seekg(currentOffset, ios::beg);
 
-                // Calculate the difference in size between the deleted record & the new record to insert
-                // In order to decide the exact position to insert the new record
-                differSize = deletedSize - recordSize;
+                // Parse the record to save its information
+                books.ignore(2); // Ignore the two characters '*' & the length delimiter '|'
+                // Read the offset of the previous deleted record (next pointer)
+                books.read((char *)&nextOffset, sizeof(nextOffset));
+                books.ignore(1); // Ignore the delimiter '|'
+                // Read the size of the current deleted record
+                books.read((char *)&currentDeletedSize, sizeof(currentDeletedSize));
 
-                // If the difference is positive, means the current deleted record is suitable to insert in
-                // As the size of the new record is smaller than the deleted record
-                if (differSize >= 0)
-                { // If this is NOT the first deleted record
-                    if (prevOffset != -1)
-                    {
-                        // Update the header to be the offset of the previous deleted record
+                // If the size of the new record is smaller than the deleted record
+                // Means the current deleted record is suitable to insert in
+                if (currentDeletedSize >= recordSize)
+                {
+                    // Check for to see if there are any records point to the current record
+                    // If there are no records that point to the current record
+                    if (prevOffset == -1)
+                    { // Update the header to point to the next pointer of the current record
                         books.seekp(0, ios::beg);
-                        books.write((char *)&prevOffset, sizeof(prevOffset));
+                        books.write((char *)&nextOffset, sizeof(short));
                     }
-                    break;
+                    else
+                    { // Otherwise, seek to the record that points to the current record
+                        // Update its next pointer to be the current record's next pointer
+                        books.seekp(prevOffset, ios::beg);
+                        books.ignore(2); // Skip the two characters '*' & the length delimiter '|'
+                        books.write((char *)&nextOffset, sizeof(short));
+                    }
+
+                    // Seek to the deleted record offset to write the new record
+                    books.seekp(currentOffset, ios::beg);
+                    // Write the deleted record size to apply internal fragmentation afterward
+                    books.write((char *)&currentDeletedSize, sizeof(currentDeletedSize));
+                    short PKOffset = books.tellp(); // Store the byteoffset of the new record
+                    // Write the rest of record fields separated by delimeters
+                    books.write(book.ISBN, isbnSize);
+                    books.write((char *)&LibraryUtilities::lengthDelimiter, 1);
+                    books.write(book.bookTitle, titleSize);
+                    books.write((char *)&LibraryUtilities::lengthDelimiter, 1);
+                    books.write(book.authorID, authIdSize);
+                    books.write((char *)&LibraryUtilities::lengthDelimiter, 1);
+
+                    // Apply internal fragmentation and fill the rest of record space with telda '~'
+                    short iterator = books.tellp();
+                    while (iterator++ < (currentOffset + currentDeletedSize - 1))
+                        books.write("~", 1);
+                    // Write the last delimiter after the telda to indicate the end of this record
+                    books.write((char *)&LibraryUtilities::lengthDelimiter, 1);
+
+                    // Add the new book to index files
+                    addBookToPrimaryIndexFile(book.ISBN, PKOffset, booksPrimaryIndex);
+                    BooksAddingSecondaryIndex::add(book, booksSecondaryIndex);
+                    cout << "\tNew Book Added Successfully!\n";
+                    books.close();
+                    return;
                 }
-
-                // If this is the first deleted record & no other records before it satisfy the condition of size
-                // Break the loop to insert at the end of the file and keep the header as it is
-                if (prevOffset == -1)
-                    break;
-
-                // Otherwise, continue the loop
-                books.seekg(prevOffset, ios::beg);
+                else
+                { // Otherwise, continue the search for a suitable deleted record
+                    // Update the previous pointer to be the current record offset
+                    prevOffset = currentOffset;
+                    // Update the current record offset to be the next pointer to continue searching
+                    currentOffset = nextOffset;
+                }
             }
 
-            // If the difference is negative, then the new record is bigger than the deleted one
-            if (differSize < 0)
-                // Insert at the end of the file and keep the header value as it is
-                books.seekp(0, ios::end);
-            else
-            { // Otherwise, the difference is positive, then the new record size is smaller than the deleted one
-                // Seek to the deleted record offset to write the new record
-                books.seekp(tempOffset, ios::beg);
-                // Add the difference in size to the current record size in order to apply internal fragmentation
-                recordSize += differSize;
-                // Flag to indicate that internal fragmentation is required
-                // Check if the sizes are equal (meaning the differSize is zero), then do NOT apply fragmentation
-                fragmentation = (differSize == 0) ? false : true;
-            }
-
-            // Write the record size of the new record
+            // If there were no records with suitable size to fit the new record, append at the end of the file
+            books.seekp(0, ios::end); // Seek to the end of file
             books.write((char *)&recordSize, sizeof(recordSize));
-            short offset = books.tellp(); // Store the byteoffset of the new record
+            short PKOffset = books.tellp(); // Store the byteoffset of the new record
             // Write the rest of record fields separated by delimeters
             books.write(book.ISBN, isbnSize);
             books.write((char *)&LibraryUtilities::lengthDelimiter, 1);
@@ -167,28 +169,8 @@ public:
             books.write((char *)&LibraryUtilities::lengthDelimiter, 1);
             books.write(book.authorID, authIdSize);
             books.write((char *)&LibraryUtilities::lengthDelimiter, 1);
-
-            // Check for internal fragmentation
-            if (fragmentation)
-            { // Apply internal fragmentation and fill the rest of record space with telda '~'
-                short iterator = books.tellp();
-                while (iterator < (tempOffset + recordSize - 2) && tempOffset != -1)
-                {
-                    books.write("~", 1);
-                    iterator++;
-                }
-                // Write the last delimiter after the telda to indicate the end of this record
-                books.write((char *)&LibraryUtilities::lengthDelimiter, 1);
-            }
-
-            // Read the header of the file again to get the latest update
-            books.seekg(0, ios::beg);
-            books.read((char *)&header, sizeof(header));
-            // Fix the avail list pointers to avoid corrupted pointers
-            LibraryUtilities::fixAvailList(header, LibraryUtilities::booksFile);
             // Add the new book to index files
-            addBookToPrimaryIndexFile(book.ISBN, offset, booksPrimaryIndex);
-            // addBookToSecondaryIndexFile(book, booksSecondaryIndex);
+            addBookToPrimaryIndexFile(book.ISBN, PKOffset, booksPrimaryIndex);
             BooksAddingSecondaryIndex::add(book, booksSecondaryIndex);
             cout << "\tNew Book Added Successfully!\n";
             books.close();
